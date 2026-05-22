@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Patients{% endblock %}
+{% block page_title %}Patient Registry{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Reception</div>
+  <a href="{% url 'opd_dashboard' %}"    class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'register_patient' %}" class="nav-link"><i class="bi bi-person-plus"></i> Register Patient</a>
+  <a href="{% url 'patient_list' %}"     class="nav-link active"><i class="bi bi-people"></i> All Patients</a>
+  <a href="{% url 'book_appointment' %}" class="nav-link"><i class="bi bi-calendar-plus"></i> Book Appointment</a>
+  <a href="{% url 'queue_board' %}"      class="nav-link"><i class="bi bi-display"></i> Live Queue</a>
+  <a href="{% url 'mortality_list' %}"   class="nav-link"><i class="bi bi-file-earmark-medical"></i> Mortality Records</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <form method="GET" class="d-flex gap-2 mb-4">
+    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, Patient ID, or phone..."/>
+    <button class="btn btn-primary">Search</button>
+    {% if query %}<a href="{% url 'patient_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+  </form>
+  <div class="d-flex justify-content-between mb-3">
+    <span class="text-muted">{{ patients|length }} patient(s) found</span>
+    <a href="{% url 'register_patient' %}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus me-1"></i>New Patient</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light"><tr><th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Blood Group</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for p in patients %}
+        <tr>
+          <td><code>{{ p.patient_id }}</code></td>
+          <td class="fw-semibold">{{ p.get_full_name }}</td>
+          <td>{{ p.get_age }} yrs</td>
+          <td>{{ p.get_gender_display }}</td>
+          <td>{{ p.phone }}</td>
+          <td><span class="badge bg-danger">{{ p.blood_group }}</span></td>
+          <td>
+            <a href="{% url 'patient_detail' p.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'book_appointment' %}?patient={{ p.pk }}" class="btn btn-sm btn-outline-success"><i class="bi bi-calendar-plus"></i></a>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No patients found.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

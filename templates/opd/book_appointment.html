@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Book Appointment{% endblock %}
+{% block page_title %}Book Appointment{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Reception</div>
+  <a href="{% url 'opd_dashboard' %}"    class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'register_patient' %}" class="nav-link"><i class="bi bi-person-plus"></i> Register Patient</a>
+  <a href="{% url 'patient_list' %}"     class="nav-link"><i class="bi bi-people"></i> All Patients</a>
+  <a href="{% url 'book_appointment' %}" class="nav-link active"><i class="bi bi-calendar-plus"></i> Book Appointment</a>
+  <a href="{% url 'queue_board' %}"      class="nav-link"><i class="bi bi-display"></i> Live Queue</a>
+  <a href="{% url 'mortality_list' %}"   class="nav-link"><i class="bi bi-file-earmark-medical"></i> Mortality Records</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <form method="POST">{% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label fw-semibold">Patient *</label>{{ form.patient }}</div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Doctor *</label>{{ form.doctor }}</div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Department</label>{{ form.department }}</div>
+      <div class="col-md-3"><label class="form-label fw-semibold">Date *</label>{{ form.scheduled_date }}</div>
+      <div class="col-md-3"><label class="form-label fw-semibold">Time *</label>{{ form.scheduled_time }}</div>
+      <div class="col-md-4"><label class="form-label fw-semibold">Priority</label>{{ form.priority }}</div>
+      <div class="col-12"><label class="form-label fw-semibold">Reason for Visit</label>{{ form.reason }}</div>
+    </div>
+    <div class="mt-4 d-flex gap-3">
+      <button type="submit" class="btn btn-primary px-4"><i class="bi bi-calendar-check me-2"></i>Book Appointment</button>
+      <a href="{% url 'opd_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

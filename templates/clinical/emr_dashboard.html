@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}Doctor Dashboard{% endblock %}
+{% block page_title %}Doctor's Workspace{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Clinical</div>
+  <a href="{% url 'emr_dashboard' %}" class="nav-link active"><i class="bi bi-speedometer2"></i> My Dashboard</a>
+  <a href="{% url 'patient_list' %}"  class="nav-link"><i class="bi bi-people"></i> Patient Search</a>
+  <a href="{% url 'queue_board' %}"   class="nav-link"><i class="bi bi-display"></i> Queue Board</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <h6 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2 text-primary"></i>My Patients Today — {{ today }}</h6>
+  {% if my_appointments %}
+  <div class="row g-3">
+    {% for appt in my_appointments %}
+    <div class="col-md-6">
+      <div class="border rounded-3 p-3 h-100">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="fw-bold fs-5">#{{ appt.queue_number }}</span>
+          {% if appt.status == 'waiting' %}<span class="badge bg-warning text-dark">Waiting</span>{% else %}<span class="badge bg-primary">Consulting</span>{% endif %}
+        </div>
+        <div class="fw-semibold fs-6">{{ appt.patient.get_full_name }}</div>
+        <div class="text-muted small mb-1">{{ appt.patient.patient_id }} | Age: {{ appt.patient.get_age }}</div>
+        {% if appt.patient.known_allergies %}<span class="badge bg-danger mb-2">⚠ {{ appt.patient.known_allergies }}</span>{% endif %}
+        {% if appt.triage %}
+        <div class="bg-light rounded p-2 mb-2 small">
+          <strong>Vitals:</strong> BP {{ appt.triage.blood_pressure }} | Temp {{ appt.triage.temperature }}°C | HR {{ appt.triage.heart_rate }}bpm<br/>
+          <strong>Complaint:</strong> {{ appt.triage.chief_complaint|truncatechars:80 }}
+        </div>
+        {% else %}<div class="text-muted small mb-2"><i class="bi bi-exclamation-circle text-warning me-1"></i>No triage recorded yet</div>{% endif %}
+        <a href="{% url 'patient_emr' appt.pk %}" class="btn btn-primary btn-sm w-100"><i class="bi bi-file-medical me-1"></i>Open EMR</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-calendar-x" style="font-size:3rem;"></i>
+    <p class="mt-3">No patients assigned to you today.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}M-Pesa STK Push{% endblock %}
+{% block page_title %}M-Pesa Payment Request{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Billing</div>
+  <a href="{% url 'billing_dashboard' %}" class="nav-link"><i class="bi bi-receipt"></i> Dashboard</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card mb-4" style="background:linear-gradient(135deg,#0f2137,#1a3a5c);color:#fff;">
+  <div class="row align-items-center">
+    <div class="col"><h5 class="mb-1">{{ invoice.invoice_number }}</h5><div class="opacity-75">{{ invoice.patient.get_full_name }}</div></div>
+    <div class="col-auto text-end"><div class="opacity-75 small">Balance Due</div><div class="fs-2 fw-bold">KES {{ invoice.balance|floatformat:2 }}</div></div>
+  </div>
+</div>
+<div class="stat-card" style="max-width:500px;">
+  <div class="text-center mb-4">
+    <div style="font-size:3rem;">📱</div>
+    <h5 class="fw-bold">Send M-Pesa Prompt</h5>
+    <p class="text-muted small">Patient will receive a pop-up on their phone to enter their M-Pesa PIN.</p>
+  </div>
+  <form method="POST">{% csrf_token %}
+    <div class="mb-3"><label class="form-label fw-semibold">Patient Phone Number</label>
+      <input type="tel" name="phone_number" class="form-control form-control-lg" placeholder="07XXXXXXXX" value="{{ invoice.patient.phone }}" required/></div>
+    <div class="mb-4"><label class="form-label fw-semibold">Amount (KES)</label>
+      <input type="number" name="amount" class="form-control form-control-lg" value="{{ invoice.balance|floatformat:0 }}" step="1" min="1" required/></div>
+    <button type="submit" class="btn btn-success btn-lg w-100 fw-semibold"><i class="bi bi-phone me-2"></i>Send STK Push</button>
+    <a href="{% url 'invoice_detail' invoice.pk %}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Audit Logs{% endblock %}
+{% block page_title %}System Audit Log{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Administration</div>
+  <a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'staff_list' %}"      class="nav-link"><i class="bi bi-people"></i> Staff</a>
+  <a href="{% url 'audit_log_list' %}"  class="nav-link active"><i class="bi bi-shield-check"></i> Audit Logs</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <div class="d-flex justify-content-between mb-3">
+    <div><h6 class="fw-bold mb-0">Immutable Activity Ledger</h6><small class="text-muted">Last 200 records. Cannot be edited or deleted.</small></div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover table-sm align-middle">
+      <thead class="table-dark"><tr><th>Timestamp</th><th>Staff</th><th>Role</th><th>Action</th><th>Module</th><th>Description</th><th>IP</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="text-muted small">{{ log.timestamp|date:"d M Y H:i:s" }}</td>
+          <td class="small fw-semibold">{{ log.user.get_full_name|default:"System" }}</td>
+          <td><span class="badge bg-secondary small">{{ log.user.get_role_display|default:"—" }}</span></td>
+          <td>{% if log.action == 'create' %}<span class="badge bg-success">{{ log.get_action_display }}</span>{% elif log.action == 'delete' %}<span class="badge bg-danger">{{ log.get_action_display }}</span>{% elif log.action == 'payment' or log.action == 'dispense' %}<span class="badge bg-primary">{{ log.get_action_display }}</span>{% else %}<span class="badge bg-secondary">{{ log.get_action_display }}</span>{% endif %}</td>
+          <td><code class="small">{{ log.model_name }}</code></td>
+          <td class="small">{{ log.description }}</td>
+          <td class="text-muted small">{{ log.ip_address|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No audit entries yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

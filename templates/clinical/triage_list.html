@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Triage{% endblock %}
+{% block page_title %}Nurse Triage Station{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Nursing</div>
+  <a href="{% url 'triage_list' %}" class="nav-link active"><i class="bi bi-clipboard2-pulse"></i> Triage Queue</a>
+  <a href="{% url 'queue_board' %}" class="nav-link"><i class="bi bi-display"></i> Queue Board</a>
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="stat-card border-top border-warning border-3">
+      <h6 class="fw-bold text-warning mb-3"><i class="bi bi-hourglass me-2"></i>Awaiting Triage <span class="badge bg-warning text-dark ms-2">{{ pending|length }}</span></h6>
+      {% for appt in pending %}
+      <div class="border rounded-3 p-3 mb-3 bg-light">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <span class="fw-bold fs-5">#{{ appt.queue_number }}</span>
+            <span class="ms-2 fw-semibold">{{ appt.patient.get_full_name }}</span><br/>
+            <small class="text-muted">{{ appt.patient.patient_id }} | Age: {{ appt.patient.get_age }}</small><br/>
+            <small class="text-muted">Dr. {{ appt.doctor.get_full_name|default:"—" }}</small>
+          </div>
+          {% if appt.priority == 'emergency' %}<span class="badge bg-danger">EMERGENCY</span>{% endif %}
+        </div>
+        <a href="{% url 'record_triage' appt.pk %}" class="btn btn-warning btn-sm mt-2 w-100"><i class="bi bi-clipboard-plus me-1"></i>Record Vitals</a>
+      </div>
+      {% empty %}<p class="text-muted text-center py-3">No patients awaiting triage</p>{% endfor %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="stat-card border-top border-success border-3">
+      <h6 class="fw-bold text-success mb-3"><i class="bi bi-check-circle me-2"></i>Triaged Today <span class="badge bg-success ms-2">{{ triaged|length }}</span></h6>
+      {% for appt in triaged %}
+      <div class="border rounded-3 p-3 mb-2 bg-light">
+        <span class="fw-bold">#{{ appt.queue_number }}</span>
+        <span class="ms-2">{{ appt.patient.get_full_name }}</span>
+        <span class="badge bg-success ms-2">Vitals Recorded</span><br/>
+        <small class="text-muted">BP: {{ appt.triage.blood_pressure }} | Temp: {{ appt.triage.temperature }}°C | HR: {{ appt.triage.heart_rate }}bpm</small>
+      </div>
+      {% empty %}<p class="text-muted text-center py-3">No triaged patients yet</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

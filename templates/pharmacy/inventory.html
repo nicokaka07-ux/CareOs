@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Drug Inventory{% endblock %}
+{% block page_title %}Drug Inventory{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Pharmacy</div>
+  <a href="{% url 'pharmacy_queue' %}" class="nav-link"><i class="bi bi-capsule"></i> Queue</a>
+  <a href="{% url 'drug_inventory' %}" class="nav-link active"><i class="bi bi-box-seam"></i> Inventory</a>
+  <a href="{% url 'add_drug' %}"       class="nav-link"><i class="bi bi-plus-circle"></i> Add Drug</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <div class="d-flex gap-2 mb-4">
+    <form method="GET" class="d-flex gap-2 flex-grow-1">
+      <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search drug name..."/>
+      <button class="btn btn-primary">Search</button>
+      {% if query %}<a href="{% url 'drug_inventory' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+    </form>
+    <a href="{% url 'add_drug' %}" class="btn btn-success"><i class="bi bi-plus me-1"></i>Add Drug</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light"><tr><th>Drug Name</th><th>Category</th><th>Unit</th><th>Stock</th><th>Min</th><th>Price (KES)</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for drug in drugs %}
+        <tr {% if drug.is_expired %}class="table-danger"{% elif drug.is_low_stock %}class="table-warning"{% endif %}>
+          <td><div class="fw-semibold">{{ drug.name }}</div>{% if drug.generic_name %}<div class="text-muted small">{{ drug.generic_name }}</div>{% endif %}</td>
+          <td>{{ drug.get_category_display }}</td>
+          <td>{{ drug.unit }}</td>
+          <td><span class="fw-bold {% if drug.is_low_stock %}text-danger{% else %}text-success{% endif %}">{{ drug.stock_quantity }}</span></td>
+          <td>{{ drug.minimum_stock }}</td>
+          <td>{{ drug.selling_price }}</td>
+          <td>{{ drug.expiry_date|default:"—" }}</td>
+          <td>{% if drug.is_expired %}<span class="badge bg-danger">Expired</span>{% elif drug.is_expiring_soon %}<span class="badge bg-warning text-dark">Expiring Soon</span>{% elif drug.is_low_stock %}<span class="badge bg-warning text-dark">Low Stock</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
+          <td><a href="{% url 'restock_drug' drug.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-circle"></i> Restock</a></td>
+        </tr>
+        {% empty %}<tr><td colspan="9" class="text-center text-muted py-4">No drugs found.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

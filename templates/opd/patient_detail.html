@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}{{ patient.get_full_name }}{% endblock %}
+{% block page_title %}Patient Profile{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Reception</div>
+  <a href="{% url 'opd_dashboard' %}"    class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'register_patient' %}" class="nav-link"><i class="bi bi-person-plus"></i> Register Patient</a>
+  <a href="{% url 'patient_list' %}"     class="nav-link"><i class="bi bi-people"></i> All Patients</a>
+  <a href="{% url 'book_appointment' %}" class="nav-link"><i class="bi bi-calendar-plus"></i> Book Appointment</a>
+  <a href="{% url 'queue_board' %}"      class="nav-link"><i class="bi bi-display"></i> Live Queue</a>
+  <a href="{% url 'mortality_list' %}"   class="nav-link"><i class="bi bi-file-earmark-medical"></i> Mortality Records</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card mb-4" style="background:linear-gradient(135deg,#0f2137,#1a3a5c);color:#fff;">
+  <div class="row align-items-center">
+    <div class="col">
+      <h4 class="mb-1">{{ patient.get_full_name }}</h4>
+      <div class="opacity-75">{{ patient.patient_id }} | Age: {{ patient.get_age }} | {{ patient.get_gender_display }} | Blood: {{ patient.blood_group }}</div>
+      <div class="opacity-75">📞 {{ patient.phone }} | 📍 {{ patient.county|default:"—" }}</div>
+      {% if patient.known_allergies %}<span class="badge bg-danger mt-2">⚠ Allergies: {{ patient.known_allergies }}</span>{% endif %}
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'book_appointment' %}?patient={{ patient.pk }}" class="btn btn-light btn-sm"><i class="bi bi-calendar-plus me-1"></i>Book Appointment</a>
+    </div>
+  </div>
+</div>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="stat-card">
+      <h6 class="fw-bold mb-3">Emergency Contact</h6>
+      <p class="mb-1"><strong>{{ patient.emergency_name }}</strong></p>
+      <p class="mb-1 text-muted">{{ patient.emergency_relationship }}</p>
+      <p class="mb-0">📞 {{ patient.emergency_phone }}</p>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="stat-card">
+      <h6 class="fw-bold mb-3">Medical History</h6>
+      <p class="mb-1"><strong>Allergies:</strong> {{ patient.known_allergies|default:"None" }}</p>
+      <p class="mb-1"><strong>Chronic:</strong> {{ patient.chronic_conditions|default:"None" }}</p>
+      <p class="mb-0"><strong>Medications:</strong> {{ patient.current_medications|default:"None" }}</p>
+    </div>
+  </div>
+</div>
+<div class="stat-card mt-4">
+  <h6 class="fw-bold mb-3">Appointment History</h6>
+  <table class="table table-sm table-hover">
+    <thead class="table-light"><tr><th>Date</th><th>Doctor</th><th>Department</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for appt in appointments %}
+      <tr>
+        <td>{{ appt.scheduled_date }}</td>
+        <td>Dr. {{ appt.doctor.get_full_name|default:"—" }}</td>
+        <td>{{ appt.department|default:"—" }}</td>
+        <td><span class="badge bg-secondary">{{ appt.get_status_display }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="4" class="text-center text-muted">No appointments yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

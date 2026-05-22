@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Staff{% endblock %}
+{% block page_title %}Staff Management{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Administration</div>
+  <a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'staff_list' %}"      class="nav-link active"><i class="bi bi-people"></i> Staff</a>
+  <a href="{% url 'audit_log_list' %}"  class="nav-link"><i class="bi bi-shield-check"></i> Audit Logs</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card">
+  <div class="d-flex justify-content-between mb-4">
+    <h6 class="fw-bold mb-0">All Staff Members</h6>
+    <a href="/admin/accounts/staffuser/add/" class="btn btn-primary btn-sm"><i class="bi bi-person-plus me-1"></i>Add Staff</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light"><tr><th>Name</th><th>Username</th><th>Role</th><th>Department</th><th>Phone</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for member in staff %}
+        <tr>
+          <td class="fw-semibold">{{ member.get_full_name|default:"—" }}</td>
+          <td><code>{{ member.username }}</code></td>
+          <td>{% if member.role == 'doctor' %}<span class="badge bg-primary">{{ member.get_role_display }}</span>{% elif member.role == 'nurse' %}<span class="badge bg-success">{{ member.get_role_display }}</span>{% elif member.role == 'admin' %}<span class="badge bg-danger">{{ member.get_role_display }}</span>{% elif member.role == 'pharmacist' %}<span class="badge bg-warning text-dark">{{ member.get_role_display }}</span>{% else %}<span class="badge bg-secondary">{{ member.get_role_display }}</span>{% endif %}</td>
+          <td>{{ member.department|default:"—" }}</td>
+          <td>{{ member.phone|default:"—" }}</td>
+          <td>{% if member.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No staff found.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

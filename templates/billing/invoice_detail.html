@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block page_title %}Invoice Detail{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Billing</div>
+  <a href="{% url 'billing_dashboard' %}" class="nav-link"><i class="bi bi-receipt"></i> Dashboard</a>
+  <a href="{% url 'create_invoice' %}"    class="nav-link"><i class="bi bi-plus-circle"></i> New Invoice</a>
+{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-7">
+    <div class="stat-card mb-4">
+      <div class="d-flex justify-content-between mb-4">
+        <div><h5 class="fw-bold">{{ invoice.invoice_number }}</h5><div class="text-muted small">{{ invoice.created_at|date:"d M Y H:i" }}</div></div>
+        {% if invoice.status == 'paid' %}<span class="badge bg-success fs-6">PAID</span>{% elif invoice.status == 'partial' %}<span class="badge bg-warning text-dark fs-6">PARTIAL</span>{% else %}<span class="badge bg-danger fs-6">UNPAID</span>{% endif %}
+      </div>
+      <div class="mb-4"><div class="fw-semibold">{{ invoice.patient.get_full_name }}</div><div class="text-muted small">{{ invoice.patient.patient_id }} | {{ invoice.patient.phone }}</div></div>
+      <table class="table">
+        <tbody>
+          <tr><td>Consultation Fee</td><td class="text-end">KES {{ invoice.consultation_fee|floatformat:2 }}</td></tr>
+          <tr><td>Laboratory Fee</td><td class="text-end">KES {{ invoice.lab_fee|floatformat:2 }}</td></tr>
+          <tr><td>Pharmacy Fee</td><td class="text-end">KES {{ invoice.pharmacy_fee|floatformat:2 }}</td></tr>
+          <tr><td>Other Charges</td><td class="text-end">KES {{ invoice.other_fee|floatformat:2 }}</td></tr>
+          <tr><td>Discount</td><td class="text-end text-danger">- KES {{ invoice.discount|floatformat:2 }}</td></tr>
+          <tr class="table-dark fw-bold"><td>TOTAL</td><td class="text-end">KES {{ invoice.total|floatformat:2 }}</td></tr>
+          <tr class="text-success"><td>Amount Paid</td><td class="text-end">KES {{ invoice.amount_paid|floatformat:2 }}</td></tr>
+          <tr class="{% if invoice.balance > 0 %}text-danger fw-bold{% endif %}"><td>Balance</td><td class="text-end">KES {{ invoice.balance|floatformat:2 }}</td></tr>
+        </tbody>
+      </table>
+      {% if invoice.status != 'paid' %}
+      <a href="{% url 'record_payment' invoice.pk %}" class="btn btn-success w-100 mb-2"><i class="bi bi-cash-coin me-2"></i>Record Payment</a>
+      <a href="{% url 'mpesa_stk_push' invoice.pk %}" class="btn btn-success w-100" style="background:#00a651;border-color:#00a651;"><i class="bi bi-phone me-2"></i>Send M-Pesa STK Push</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-md-5">
+    <div class="stat-card">
+      <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"></i>Payment History</h6>
+      {% for payment in payments %}
+      <div class="border rounded p-3 mb-2">
+        <div class="d-flex justify-content-between"><span class="fw-semibold">KES {{ payment.amount|floatformat:2 }}</span><span class="badge bg-primary">{{ payment.get_method_display }}</span></div>
+        {% if payment.reference %}<div class="text-muted small">Ref: {{ payment.reference }}</div>{% endif %}
+        <div class="text-muted small">{{ payment.paid_at|date:"d M Y H:i" }}</div>
+      </div>
+      {% empty %}<p class="text-muted small text-center py-3">No payments recorded yet.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

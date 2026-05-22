@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Live Queue{% endblock %}
+{% block page_title %}Live Queue Board{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Reception</div>
+  <a href="{% url 'opd_dashboard' %}"    class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'register_patient' %}" class="nav-link"><i class="bi bi-person-plus"></i> Register Patient</a>
+  <a href="{% url 'patient_list' %}"     class="nav-link"><i class="bi bi-people"></i> All Patients</a>
+  <a href="{% url 'book_appointment' %}" class="nav-link"><i class="bi bi-calendar-plus"></i> Book Appointment</a>
+  <a href="{% url 'queue_board' %}"      class="nav-link active"><i class="bi bi-display"></i> Live Queue</a>
+  <a href="{% url 'mortality_list' %}"   class="nav-link"><i class="bi bi-file-earmark-medical"></i> Mortality Records</a>
+{% endblock %}
+{% block content %}
+<meta http-equiv="refresh" content="30"/>
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="stat-card border-top border-warning border-3">
+      <h6 class="fw-bold text-warning mb-3"><i class="bi bi-hourglass-split me-2"></i>Waiting Room <span class="badge bg-warning text-dark ms-2">{{ waiting|length }}</span></h6>
+      {% for appt in waiting %}
+      <div class="border rounded-3 p-3 mb-2 bg-light">
+        <div class="d-flex justify-content-between">
+          <span class="fw-bold fs-5">#{{ appt.queue_number }}</span>
+          {% if appt.priority == 'emergency' %}<span class="badge bg-danger">EMERGENCY</span>{% endif %}
+        </div>
+        <div class="fw-semibold">{{ appt.patient.get_full_name }}</div>
+        <div class="text-muted small">{{ appt.patient.patient_id }}</div>
+        <div class="text-muted small">Dr. {{ appt.doctor.get_full_name|default:"—" }}</div>
+      </div>
+      {% empty %}<p class="text-muted text-center py-3">Waiting room is empty</p>{% endfor %}
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card border-top border-primary border-3">
+      <h6 class="fw-bold text-primary mb-3"><i class="bi bi-person-check me-2"></i>In Consultation <span class="badge bg-primary ms-2">{{ consulting|length }}</span></h6>
+      {% for appt in consulting %}
+      <div class="border rounded-3 p-3 mb-2" style="background:#e7f0ff;">
+        <span class="fw-bold fs-5">#{{ appt.queue_number }}</span>
+        <div class="fw-semibold">{{ appt.patient.get_full_name }}</div>
+        <div class="text-muted small">Dr. {{ appt.doctor.get_full_name|default:"—" }}</div>
+      </div>
+      {% empty %}<p class="text-muted text-center py-3">No active consultations</p>{% endfor %}
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card border-top border-success border-3">
+      <h6 class="fw-bold text-success mb-3"><i class="bi bi-check-circle me-2"></i>Completed Today <span class="badge bg-success ms-2">{{ completed|length }}</span></h6>
+      {% for appt in completed %}
+      <div class="border rounded-3 p-2 mb-2 bg-light">
+        <span class="fw-bold">#{{ appt.queue_number }}</span>
+        <span class="ms-2">{{ appt.patient.get_full_name }}</span>
+      </div>
+      {% empty %}<p class="text-muted text-center py-3">No completed appointments yet</p>{% endfor %}
+    </div>
+  </div>
+</div>
+<div class="text-muted small text-center mt-3"><i class="bi bi-arrow-clockwise me-1"></i>Auto-refreshes every 30 seconds</div>
+{% endblock %}

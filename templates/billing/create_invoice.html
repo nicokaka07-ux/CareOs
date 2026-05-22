@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}New Invoice{% endblock %}
+{% block page_title %}Create Invoice{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Billing</div>
+  <a href="{% url 'billing_dashboard' %}" class="nav-link"><i class="bi bi-receipt"></i> Dashboard</a>
+  <a href="{% url 'create_invoice' %}"    class="nav-link active"><i class="bi bi-plus-circle"></i> New Invoice</a>
+{% endblock %}
+{% block content %}
+<div class="stat-card" style="max-width:700px;">
+  <form method="POST">{% csrf_token %}
+    <div class="mb-3"><label class="form-label fw-semibold">Patient *</label>
+      <select name="patient" class="form-select" required>
+        <option value="">— Select patient —</option>
+        {% for p in patients %}<option value="{{ p.pk }}">{{ p.patient_id }} — {{ p.get_full_name }}</option>{% endfor %}
+      </select></div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-6"><label class="form-label fw-semibold">Consultation Fee (KES)</label><input type="number" name="consultation_fee" class="form-control" step="0.01" min="0" value="0"/></div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Laboratory Fee (KES)</label><input type="number" name="lab_fee" class="form-control" step="0.01" min="0" value="0"/></div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Pharmacy Fee (KES)</label><input type="number" name="pharmacy_fee" class="form-control" step="0.01" min="0" value="0"/></div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Other Charges (KES)</label><input type="number" name="other_fee" class="form-control" step="0.01" min="0" value="0"/></div>
+      <div class="col-md-6"><label class="form-label fw-semibold">Discount (KES)</label><input type="number" name="discount" class="form-control" step="0.01" min="0" value="0"/></div>
+    </div>
+    <div class="mb-4"><label class="form-label fw-semibold">Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+    <div class="d-flex gap-3">
+      <button type="submit" class="btn btn-primary px-4"><i class="bi bi-receipt me-2"></i>Create Invoice</button>
+      <a href="{% url 'billing_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

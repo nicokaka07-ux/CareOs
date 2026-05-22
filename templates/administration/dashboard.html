@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}System Administration{% endblock %}
+{% block sidebar_links %}
+  <div class="nav-section">Administration</div>
+  <a href="{% url 'admin_dashboard' %}"  class="nav-link active"><i class="bi bi-speedometer2"></i> Dashboard</a>
+  <a href="{% url 'staff_list' %}"       class="nav-link"><i class="bi bi-people"></i> Staff</a>
+  <a href="{% url 'audit_log_list' %}"   class="nav-link"><i class="bi bi-shield-check"></i> Audit Logs</a>
+  <a href="{% url 'patient_list' %}"     class="nav-link"><i class="bi bi-person-lines-fill"></i> Patients</a>
+  <a href="{% url 'drug_inventory' %}"   class="nav-link"><i class="bi bi-box-seam"></i> Inventory</a>
+  <div class="nav-section">System</div>
+  <a href="/admin/"                      class="nav-link"><i class="bi bi-gear"></i> Django Admin</a>
+{% endblock %}
+{% block content %}
+{% if low_stock_drugs or expiring_drugs %}
+<div class="alert alert-warning d-flex gap-3 align-items-start mb-4">
+  <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+  <div>
+    {% if low_stock_drugs %}<strong>Low Stock:</strong> {% for d in low_stock_drugs %}{{ d.name }} ({{ d.stock_quantity }}){% if not forloop.last %}, {% endif %}{% endfor %}<br/>{% endif %}
+    {% if expiring_drugs %}<strong>Expiring Soon:</strong> {% for d in expiring_drugs %}{{ d.name }} ({{ d.expiry_date }}){% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}
+  </div>
+</div>
+{% endif %}
+<div class="row g-3 mb-4">
+  <div class="col-md-2"><div class="stat-card text-center"><div class="text-muted small">Total Patients</div><div class="fs-2 fw-bold text-primary">{{ total_patients }}</div><div class="text-success small">+{{ new_this_week }} this week</div></div></div>
+  <div class="col-md-2"><div class="stat-card text-center"><div class="text-muted small">Today Appts</div><div class="fs-2 fw-bold text-info">{{ today_appointments }}</div></div></div>
+  <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">Today Revenue</div><div class="fs-2 fw-bold text-success">KES {{ today_revenue|floatformat:0 }}</div></div></div>
+  <div class="col-md-3"><div class="stat-card text-center"><div class="text-muted small">Week Revenue</div><div class="fs-2 fw-bold text-success">KES {{ week_revenue|floatformat:0 }}</div></div></div>
+  <div class="col-md-2"><div class="stat-card text-center"><div class="text-muted small">Outstanding</div><div class="fs-2 fw-bold text-danger">KES {{ unpaid_total|floatformat:0 }}</div></div></div>
+</div>
+<div class="row g-4 mb-4">
+  <div class="col-md-8"><div class="stat-card"><h6 class="fw-bold mb-3"><i class="bi bi-graph-up me-2 text-success"></i>Revenue — Last 7 Days</h6><canvas id="revenueChart" height="100"></canvas></div></div>
+  <div class="col-md-4"><div class="stat-card"><h6 class="fw-bold mb-3"><i class="bi bi-people me-2 text-primary"></i>Staff by Role</h6><canvas id="staffChart" height="180"></canvas></div></div>
+</div>
+<div class="row g-4 mb-4">
+  <div class="col-md-6"><div class="stat-card"><h6 class="fw-bold mb-3"><i class="bi bi-bar-chart me-2 text-info"></i>Patient Volume by Department</h6><canvas id="deptChart" height="140"></canvas></div></div>
+  <div class="col-md-6">
+    <div class="stat-card">
+      <h6 class="fw-bold mb-3"><i class="bi bi-capsule me-2 text-warning"></i>Top 5 Dispensed Medications</h6>
+      {% for drug in top_drugs %}
+      <div class="d-flex justify-content-between align-items-center mb-2"><span>{{ drug.drug__name|default:"Unknown" }}</span><span class="badge bg-warning text-dark">{{ drug.total }} units</span></div>
+      <div class="progress mb-2" style="height:6px;"><div class="progress-bar bg-warning" style="width:{{ drug.total }}%"></div></div>
+      {% empty %}<p class="text-muted small">No dispense data yet.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+<div class="stat-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-bold mb-0"><i class="bi bi-shield-check me-2 text-secondary"></i>Recent Activity Log</h6>
+    <a href="{% url 'audit_log_list' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle">
+      <thead class="table-light"><tr><th>Time</th><th>Staff</th><th>Action</th><th>Description</th></tr></thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td class="text-muted small">{{ log.timestamp|date:"d M H:i" }}</td>
+          <td class="small">{{ log.user.get_full_name|default:"System" }}</td>
+          <td>{% if log.action == 'create' %}<span class="badge bg-success">{{ log.action }}</span>{% elif log.action == 'delete' %}<span class="badge bg-danger">{{ log.action }}</span>{% elif log.action == 'payment' or log.action == 'dispense' %}<span class="badge bg-primary">{{ log.action }}</span>{% else %}<span class="badge bg-secondary">{{ log.action }}</span>{% endif %}</td>
+          <td class="small">{{ log.description|truncatechars:80 }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No activity logged yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+new Chart(document.getElementById('revenueChart'),{type:'line',data:{labels:{{ revenue_labels|safe }},datasets:[{label:'Revenue (KES)',data:{{ revenue_values|safe }},borderColor:'#198754',backgroundColor:'rgba(25,135,84,.1)',tension:.4,fill:true}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+new Chart(document.getElementById('staffChart'),{type:'doughnut',data:{labels:{{ role_labels|safe }},datasets:[{data:{{ role_counts|safe }},backgroundColor:['#0d6efd','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1']}]},options:{plugins:{legend:{position:'bottom'}}}});
+new Chart(document.getElementById('deptChart'),{type:'bar',data:{labels:{{ dept_labels|safe }},datasets:[{label:'Appointments',data:{{ dept_counts|safe }},backgroundColor:'#0dcaf0',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+</script>
+{% endblock %}
