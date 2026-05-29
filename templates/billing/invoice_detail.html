@@ -7,6 +7,21 @@
   <a href="{% url 'create_invoice' %}"    class="nav-link"><i class="bi bi-plus-circle"></i> New Invoice</a>
 {% endblock %}
 {% block content %}
+{% if invoice.status != 'paid' and invoice.mpesa_transactions.exists %}
+{% for tx in invoice.mpesa_transactions.all %}
+{% if tx.status == 'pending' %}
+<div class="alert alert-info d-flex align-items-center" id="waiting-alert">
+  <div class="spinner-border spinner-border-sm me-3" role="status"></div>
+  <div>
+    <strong>Waiting for M-Pesa payment...</strong>
+    Patient should check their phone and enter PIN.
+    This page will auto-refresh every 5 seconds.
+  </div>
+</div>
+<meta http-equiv="refresh" content="5"/>
+{% endif %}
+{% endfor %}
+{% endif %}
 <div class="row g-4">
   <div class="col-md-7">
     <div class="stat-card mb-4">
@@ -46,4 +61,35 @@
     </div>
   </div>
 </div>
+{% if invoice.mpesa_transactions.exists %}
+<div class="stat-card mt-3">
+  <h6 class="fw-bold mb-3"><i class="bi bi-phone me-2 text-success"></i>M-Pesa STK Push History</h6>
+  {% for tx in invoice.mpesa_transactions.all %}
+  <div class="border rounded p-3 mb-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div class="fw-semibold">{{ tx.phone_number }}</div>
+        <div class="text-muted small">KES {{ tx.amount }} — {{ tx.initiated_at|date:"d M Y H:i" }}</div>
+        {% if tx.mpesa_receipt %}<div class="text-success small">Receipt: <code>{{ tx.mpesa_receipt }}</code></div>{% endif %}
+        {% if tx.result_desc %}<div class="text-muted small">{{ tx.result_desc }}</div>{% endif %}
+      </div>
+      <div>
+        {% if tx.status == 'success' %}
+          <span class="badge bg-success fs-6">✅ Paid</span>
+        {% elif tx.status == 'failed' %}
+          <span class="badge bg-danger fs-6">❌ Failed</span>
+        {% elif tx.status == 'cancelled' %}
+          <span class="badge bg-warning text-dark fs-6">⚠ Cancelled</span>
+        {% else %}
+          <span class="badge bg-warning text-dark fs-6">
+            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            Pending...
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

@@ -8,27 +8,91 @@
   <a href="{% url 'queue_board' %}"   class="nav-link"><i class="bi bi-display"></i> Queue Board</a>
 {% endblock %}
 {% block content %}
+
+{# ── Summary counts ── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card text-center border-warning border-2">
+      <div class="fs-1 fw-bold text-warning">{{ waiting_count }}</div>
+      <div class="text-muted small">Waiting</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card text-center border-primary border-2">
+      <div class="fs-1 fw-bold text-primary">{{ consulting_count }}</div>
+      <div class="text-muted small">In Consultation</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card text-center border-success border-2">
+      <div class="fs-1 fw-bold text-success">{{ completed_count }}</div>
+      <div class="text-muted small">Completed Today</div>
+    </div>
+  </div>
+</div>
+
+{# ── Patient cards ── #}
 <div class="stat-card">
-  <h6 class="fw-bold mb-3"><i class="bi bi-calendar-check me-2 text-primary"></i>My Patients Today — {{ today }}</h6>
+  <h6 class="fw-bold mb-3">
+    <i class="bi bi-calendar-check me-2 text-primary"></i>
+    My Patients Today — {{ today }}
+  </h6>
   {% if my_appointments %}
   <div class="row g-3">
     {% for appt in my_appointments %}
     <div class="col-md-6">
-      <div class="border rounded-3 p-3 h-100">
+      <div class="border rounded-3 p-3 h-100
+        {% if appt.status == 'waiting' %}border-warning
+        {% elif appt.status == 'consulting' %}border-primary
+        {% elif appt.status == 'completed' %}border-success
+        {% endif %}">
         <div class="d-flex justify-content-between mb-2">
           <span class="fw-bold fs-5">#{{ appt.queue_number }}</span>
-          {% if appt.status == 'waiting' %}<span class="badge bg-warning text-dark">Waiting</span>{% else %}<span class="badge bg-primary">Consulting</span>{% endif %}
+          {% if appt.status == 'waiting' %}
+            <span class="badge bg-warning text-dark">Waiting for You</span>
+          {% elif appt.status == 'consulting' %}
+            <span class="badge bg-primary">In Consultation</span>
+          {% elif appt.status == 'completed' %}
+            <span class="badge bg-success">Completed</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ appt.status|title }}</span>
+          {% endif %}
         </div>
         <div class="fw-semibold fs-6">{{ appt.patient.get_full_name }}</div>
-        <div class="text-muted small mb-1">{{ appt.patient.patient_id }} | Age: {{ appt.patient.get_age }}</div>
-        {% if appt.patient.known_allergies %}<span class="badge bg-danger mb-2">⚠ {{ appt.patient.known_allergies }}</span>{% endif %}
+        <div class="text-muted small mb-1">
+          {{ appt.patient.patient_id }} | Age: {{ appt.patient.get_age }} | {{ appt.patient.get_gender_display }}
+        </div>
+        <div class="text-muted small mb-2">
+          <i class="bi bi-building me-1"></i>{{ appt.department.name|default:'General' }}
+          {% if appt.priority != 'normal' %}
+            <span class="badge bg-danger ms-1">{{ appt.priority|upper }}</span>
+          {% endif %}
+        </div>
+        {% if appt.patient.known_allergies %}
+          <span class="badge bg-danger mb-2">⚠ {{ appt.patient.known_allergies }}</span>
+        {% endif %}
         {% if appt.triage %}
         <div class="bg-light rounded p-2 mb-2 small">
-          <strong>Vitals:</strong> BP {{ appt.triage.blood_pressure }} | Temp {{ appt.triage.temperature }}°C | HR {{ appt.triage.heart_rate }}bpm<br/>
+          <strong>Vitals:</strong>
+          BP {{ appt.triage.blood_pressure }} |
+          Temp {{ appt.triage.temperature }}°C |
+          HR {{ appt.triage.heart_rate }}bpm<br>
           <strong>Complaint:</strong> {{ appt.triage.chief_complaint|truncatechars:80 }}
         </div>
-        {% else %}<div class="text-muted small mb-2"><i class="bi bi-exclamation-circle text-warning me-1"></i>No triage recorded yet</div>{% endif %}
-        <a href="{% url 'patient_emr' appt.pk %}" class="btn btn-primary btn-sm w-100"><i class="bi bi-file-medical me-1"></i>Open EMR</a>
+        {% else %}
+        <div class="text-muted small mb-2">
+          <i class="bi bi-exclamation-circle text-warning me-1"></i>No triage recorded yet
+        </div>
+        {% endif %}
+        {% if appt.status != 'completed' %}
+          <a href="{% url 'patient_emr' appt.pk %}" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-file-medical me-1"></i>Open EMR
+          </a>
+        {% else %}
+          <a href="{% url 'patient_emr' appt.pk %}" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="bi bi-eye me-1"></i>View Record
+          </a>
+        {% endif %}
       </div>
     </div>
     {% endfor %}
@@ -37,6 +101,7 @@
   <div class="text-center py-5 text-muted">
     <i class="bi bi-calendar-x" style="font-size:3rem;"></i>
     <p class="mt-3">No patients assigned to you today.</p>
+    <p class="small">Patients are assigned at reception when booking an appointment.</p>
   </div>
   {% endif %}
 </div>

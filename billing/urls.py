@@ -8,4 +8,6 @@ urlpatterns = [
     path('invoice/<int:invoice_pk>/pay/',     views.record_payment,    name='record_payment'),
     path('invoice/<int:invoice_pk>/mpesa/',   views.mpesa_stk_push,    name='mpesa_stk_push'),
     path('mpesa/callback/',                   views.mpesa_callback,    name='mpesa_callback'),
+ path('mpesa/status/<str:checkout_request_id>/', views.mpesa_payment_status, name='mpesa_payment_status'), 
+path('mpesa/waiting/<str:checkout_request_id>/', views.mpesa_waiting, name='mpesa_waiting'),  
 ]

@@ -52,15 +52,49 @@ class Department(models.Model):
     def __str__(self): return self.name
 
 class Appointment(models.Model):
-    STATUS_CHOICES   = [('scheduled','Scheduled'),('waiting','Waiting'),
-                        ('consulting','Consulting'),('completed','Completed'),
-                        ('cancelled','Cancelled'),('no_show','No Show')]
-    PRIORITY_CHOICES = [('normal','Normal'),('urgent','Urgent'),('emergency','Emergency')]
+    OUTCOME_CHOICES = [                        # ← fixed: 4-space indent
+        ('treated',       'Treated'),
+        ('discharged',    'Discharged'),
+        ('admitted',      'Admitted'),
+        ('medicine_only', 'Medication Only'),
+        ('died',          'Died'),
+    ]
+    STATUS_CHOICES = [
+        ('scheduled',  'Scheduled'),
+        ('waiting',    'Waiting'),
+        ('consulting', 'Consulting'),
+        ('completed',  'Completed'),
+        ('cancelled',  'Cancelled'),
+        ('no_show',    'No Show'),
+    ]
+    PRIORITY_CHOICES = [
+        ('normal',    'Normal'),
+        ('urgent',    'Urgent'),
+        ('emergency', 'Emergency'),
+    ]
+    NEXT_STEP_CHOICES = [
+        ('',            'Next step'),
+        ('triage',      'Triage'),
+        ('doctor',      'Doctor'),
+        ('lab',         'Lab'),
+        ('reception',   'Reception'),
+        ('pharmacy',    'Pharmacy'),
+        ('ward',        'Ward'),
+        ('cashier',     'Cashier'),
+        ('follow_up',   'Follow-up'),
+        ('home',        'Home'),
+        ('discharged',  'Discharged'),
+        ('admitted',    'Admitted'),
+        ('nutrition',   'Nutrition'),
+        ('physiotherapy','Physiotherapy'),
+        ('dental',      'Dental'),
+        ('optical',     'Optical'),
+    ]
 
     patient        = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
     doctor         = models.ForeignKey('accounts.StaffUser', on_delete=models.SET_NULL,
-                                       null=True, related_name='appointments')
-    department     = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True)
+                                       null=True, blank=True, related_name='appointments')
+    department     = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     scheduled_date = models.DateField()
     scheduled_time = models.TimeField()
     status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
@@ -68,9 +102,11 @@ class Appointment(models.Model):
     reason         = models.TextField(blank=True)
     queue_number   = models.PositiveIntegerField(null=True, blank=True)
     reminder_sent  = models.BooleanField(default=False)
+    next_step      = models.CharField(max_length=20, choices=NEXT_STEP_CHOICES, default='', blank=True)
+    outcome        = models.CharField(max_length=20, choices=OUTCOME_CHOICES, blank=True, default='')  # ← fixed
     created_at     = models.DateTimeField(auto_now_add=True)
     created_by     = models.ForeignKey('accounts.StaffUser', on_delete=models.SET_NULL,
-                                       null=True, related_name='created_appointments')
+                                       null=True, blank=True, related_name='created_appointments')
 
     def save(self, *args, **kwargs):
         if not self.queue_number:
@@ -80,8 +116,28 @@ class Appointment(models.Model):
             self.queue_number = count + 1
         super().save(*args, **kwargs)
 
-    def __str__(self): return f"#{self.queue_number} — {self.patient.get_full_name()}"
-    class Meta: ordering = ['scheduled_date','scheduled_time']
+    def can_be_managed_by(self, user):           # ← added
+        role = getattr(user, 'role', None)
+        if role == 'admin':
+            return True
+        allowed = {
+            'receptionist':   ['scheduled', 'waiting', 'cancelled'],
+            'nurse':          ['waiting', 'consulting'],
+            'doctor':         ['waiting', 'consulting', 'completed'],
+            'pharmacist':     ['consulting', 'completed'],
+            'cashier':        ['consulting', 'completed'],
+            'lab_technician': ['consulting', 'completed'],
+        }
+        return self.status in allowed.get(role, [])
+
+    def get_next_step_display_label(self):
+        return dict(self.NEXT_STEP_CHOICES).get(self.next_step, '—')
+
+    def __str__(self):
+        return f"#{self.queue_number} — {self.patient.get_full_name()}"
+   
+class Meta:
+        ordering = ['scheduled_date', 'scheduled_time']
 
 class MortalityRecord(models.Model):
     patient          = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='mortality')

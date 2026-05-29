@@ -74,3 +74,26 @@ class Prescription(models.Model):
     prescribed_at   = models.DateTimeField(auto_now_add=True)
     dispensed_at    = models.DateTimeField(null=True, blank=True)
     class Meta: ordering = ['-prescribed_at']
+
+class LabResult(models.Model):
+    STATUS_CHOICES = [
+        ('pending',    'Pending'),
+        ('processing', 'Processing'),
+        ('completed',  'Completed'),
+        ('cancelled',  'Cancelled'),
+    ]
+    lab_order    = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name='lab_result')  # ← was 'result'
+    patient      = models.ForeignKey('opd.Patient', on_delete=models.CASCADE, related_name='lab_results')
+    technician   = models.ForeignKey('accounts.StaffUser', on_delete=models.SET_NULL,
+                                      null=True, related_name='lab_results')
+    result_text  = models.TextField(blank=True)
+    result_file  = models.FileField(upload_to='lab_results/', blank=True, null=True)
+    status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes        = models.TextField(blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Result — {self.lab_order.test_name} — {self.patient.get_full_name()}"
+
+    class Meta:
+        ordering = ['-created_at']   

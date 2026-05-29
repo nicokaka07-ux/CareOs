@@ -1,34 +1,90 @@
 {% extends 'base.html' %}
-{% block title %}Staff{% endblock %}
+{% block title %}Staff List{% endblock %}
 {% block page_title %}Staff Management{% endblock %}
-{% block sidebar_links %}
-  <div class="nav-section">Administration</div>
-  <a href="{% url 'admin_dashboard' %}" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard</a>
-  <a href="{% url 'staff_list' %}"      class="nav-link active"><i class="bi bi-people"></i> Staff</a>
-  <a href="{% url 'audit_log_list' %}"  class="nav-link"><i class="bi bi-shield-check"></i> Audit Logs</a>
-{% endblock %}
 {% block content %}
-<div class="stat-card">
-  <div class="d-flex justify-content-between mb-4">
-    <h6 class="fw-bold mb-0">All Staff Members</h6>
-    <a href="/admin/accounts/staffuser/add/" class="btn btn-primary btn-sm"><i class="bi bi-person-plus me-1"></i>Add Staff</a>
-  </div>
-  <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light"><tr><th>Name</th><th>Username</th><th>Role</th><th>Department</th><th>Phone</th><th>Status</th></tr></thead>
-      <tbody>
-        {% for member in staff %}
-        <tr>
-          <td class="fw-semibold">{{ member.get_full_name|default:"—" }}</td>
-          <td><code>{{ member.username }}</code></td>
-          <td>{% if member.role == 'doctor' %}<span class="badge bg-primary">{{ member.get_role_display }}</span>{% elif member.role == 'nurse' %}<span class="badge bg-success">{{ member.get_role_display }}</span>{% elif member.role == 'admin' %}<span class="badge bg-danger">{{ member.get_role_display }}</span>{% elif member.role == 'pharmacist' %}<span class="badge bg-warning text-dark">{{ member.get_role_display }}</span>{% else %}<span class="badge bg-secondary">{{ member.get_role_display }}</span>{% endif %}</td>
-          <td>{{ member.department|default:"—" }}</td>
-          <td>{{ member.phone|default:"—" }}</td>
-          <td>{% if member.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</td>
-        </tr>
-        {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No staff found.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h5 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>All Staff ({{ staff.count }})</h5>
+  <a href="{% url 'create_staff' %}" class="btn btn-primary">
+    <i class="bi bi-person-plus me-1"></i>Add Staff
+  </a>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endfor %}
+{% endif %}
+
+<div class="stat-card p-0">
+  <table class="table table-hover mb-0">
+    <thead class="table-dark">
+      <tr>
+        <th>Name</th>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Department</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for member in staff %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            {% if member.profile_photo %}
+              <img src="{{ member.profile_photo.url }}" class="rounded-circle" width="32" height="32" style="object-fit:cover;">
+            {% else %}
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:13px;">
+                {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+              </div>
+            {% endif %}
+            <span class="fw-semibold">{{ member.get_full_name }}</span>
+          </div>
+        </td>
+        <td class="text-muted small">{{ member.username }}</td>
+        <td>
+          <span class="badge bg-secondary">{{ member.get_role_display }}</span>
+        </td>
+        <td class="text-muted small">{{ member.department|default:"—" }}</td>
+        <td class="text-muted small">{{ member.phone|default:"—" }}</td>
+        <td class="text-muted small">{{ member.email|default:"—" }}</td>
+        <td>
+          {% if member.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-danger">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="{% url 'reset_staff_password' member.pk %}"
+               class="btn btn-sm btn-outline-warning"
+               title="Reset Password">
+              <i class="bi bi-key"></i>
+            </a>
+            <form method="POST" action="{% url 'toggle_staff_status' member.pk %}"
+                  onsubmit="return confirm('Toggle active status for {{ member.get_full_name }}?')">
+              {% csrf_token %}
+              <button class="btn btn-sm {% if member.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                      title="{% if member.is_active %}Deactivate{% else %}Activate{% endif %}">
+                <i class="bi bi-{% if member.is_active %}person-dash{% else %}person-check{% endif %}"></i>
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="text-center text-muted py-4">No staff accounts found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

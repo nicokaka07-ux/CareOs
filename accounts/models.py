@@ -3,10 +3,35 @@ from django.db import models
 
 class StaffUser(AbstractUser):
     ROLE_CHOICES = [
-        ('admin','System Admin'),('receptionist','Receptionist'),
-        ('nurse','Nurse'),('doctor','Doctor'),
-        ('pharmacist','Pharmacist'),('cashier','Cashier'),
-    ]
+        ('admin',            'System Admin'),
+        ('receptionist',     'Receptionist'),
+        ('nurse',            'Nurse'),
+        # Doctors
+        ('doctor',           'General Practitioner'),
+        ('surgeon',          'General Surgeon'),
+        ('physician',        'Physician / Internist'),
+        ('pediatrician',     'Pediatrician'),
+        ('gynecologist',     'Gynecologist / Obstetrician'),
+        ('cardiologist',     'Cardiologist'),
+        ('neurologist',      'Neurologist'),
+        ('neurosurgeon',     'Neurosurgeon'),
+        ('orthopedic',       'Orthopedic Surgeon'),
+        ('dermatologist',    'Dermatologist'),
+        ('psychiatrist',     'Psychiatrist'),
+        ('radiologist',      'Radiologist'),
+        ('anesthesiologist', 'Anesthesiologist'),
+        ('urologist',        'Urologist'),
+        ('oncologist',       'Oncologist'),
+        ('ent',              'ENT Specialist'),
+        ('ophthalmologist',  'Ophthalmologist (Eye)'),
+        ('dentist',          'Dentist'),
+        ('physiotherapist',  'Physiotherapist'),
+        # Support
+        ('lab_technician',   'Lab Technician'),
+        ('pharmacist',       'Pharmacist'),
+        ('cashier',          'Cashier'),
+        ('nutritionist',     'Nutritionist / Dietitian'),
+    ]                                                        # ← was at 0 spaces, now 4
     role          = models.CharField(max_length=20, choices=ROLE_CHOICES, default='receptionist')
     phone         = models.CharField(max_length=15, blank=True)
     department    = models.CharField(max_length=100, blank=True)

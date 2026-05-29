@@ -23,14 +23,24 @@ def logout_view(request):
 
 @login_required
 def dashboard_redirect(request):
-    if request.user.is_superuser and not request.user.role:
-        return redirect('admin_dashboard')
+    # All doctor specializations go to EMR
+    doctor_roles = [
+        'doctor','surgeon','physician','pediatrician','gynecologist',
+        'cardiologist','neurologist','neurosurgeon','orthopedic',
+        'dermatologist','psychiatrist','radiologist','anesthesiologist',
+        'urologist','oncologist','ent','ophthalmologist','dentist',
+        'physiotherapist',
+    ]
+    role = request.user.role
+    if role in doctor_roles:
+        return redirect('emr_dashboard')
     role_map = {
-        'receptionist': 'opd_dashboard',
-        'nurse':        'triage_list',
-        'doctor':       'emr_dashboard',
-        'pharmacist':   'pharmacy_queue',
-        'cashier':      'billing_dashboard',
-        'admin':        'admin_dashboard',
+        'receptionist':   'opd_dashboard',
+        'nurse':          'triage_list',
+        'lab_technician': 'triage_list',
+        'pharmacist':     'pharmacy_queue',
+        'cashier':        'billing_dashboard',
+        'admin':          'admin_dashboard',
+        'nutritionist':   'opd_dashboard',
     }
-    return redirect(role_map.get(request.user.role, 'admin_dashboard'))
+    return redirect(role_map.get(role, 'opd_dashboard'))

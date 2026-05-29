@@ -12,10 +12,17 @@
 {% endblock %}
 {% block content %}
 <div class="stat-card">
-  <form method="GET" class="d-flex gap-2 mb-4">
-    <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, Patient ID, or phone..."/>
-    <button class="btn btn-primary">Search</button>
-    {% if query %}<a href="{% url 'patient_list' %}" class="btn btn-outline-secondary">Clear</a>{% endif %}
+  <form method="GET" class="row g-2 mb-4">
+    <div class="col-md-5">
+      <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, Patient ID, or phone..."/>
+    </div>
+    <div class="col-md-4">
+      <input type="date" name="visit_date" value="{{ visit_date }}" class="form-control"/>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button class="btn btn-primary w-100">Search</button>
+      <a href="{% url 'patient_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
+    </div>
   </form>
   <div class="d-flex justify-content-between mb-3">
     <span class="text-muted">{{ patients|length }} patient(s) found</span>
@@ -23,7 +30,7 @@
   </div>
   <div class="table-responsive">
     <table class="table table-hover align-middle">
-      <thead class="table-light"><tr><th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Blood Group</th><th>Actions</th></tr></thead>
+      <thead class="table-light"><tr><th>Patient ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>Last visit</th><th>Visits</th><th>Outcome</th><th>Actions</th></tr></thead>
       <tbody>
         {% for p in patients %}
         <tr>
@@ -32,13 +39,15 @@
           <td>{{ p.get_age }} yrs</td>
           <td>{{ p.get_gender_display }}</td>
           <td>{{ p.phone }}</td>
-          <td><span class="badge bg-danger">{{ p.blood_group }}</span></td>
+          <td>{{ p.last_visit_date|date:"d M Y" }}</td>
+          <td><span class="badge bg-primary">{{ p.visit_count }}</span></td>
+          <td><span class="badge bg-{{ p.outcome_class }}">{{ p.outcome_label }}</span></td>
           <td>
             <a href="{% url 'patient_detail' p.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
             <a href="{% url 'book_appointment' %}?patient={{ p.pk }}" class="btn btn-sm btn-outline-success"><i class="bi bi-calendar-plus"></i></a>
           </td>
         </tr>
-        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No patients found.</td></tr>{% endfor %}
+        {% empty %}<tr><td colspan="9" class="text-center text-muted py-4">No patients found.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>

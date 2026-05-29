@@ -24,7 +24,8 @@
     </div>
   </div>
 </div>
-<div class="row g-4">
+
+<div class="row g-4 mb-4">
   <div class="col-md-6">
     <div class="stat-card">
       <h6 class="fw-bold mb-3">Emergency Contact</h6>
@@ -42,20 +43,69 @@
     </div>
   </div>
 </div>
-<div class="stat-card mt-4">
+
+<div class="stat-card">
   <h6 class="fw-bold mb-3">Appointment History</h6>
-  <table class="table table-sm table-hover">
-    <thead class="table-light"><tr><th>Date</th><th>Doctor</th><th>Department</th><th>Status</th></tr></thead>
-    <tbody>
-      {% for appt in appointments %}
-      <tr>
-        <td>{{ appt.scheduled_date }}</td>
-        <td>Dr. {{ appt.doctor.get_full_name|default:"—" }}</td>
-        <td>{{ appt.department|default:"—" }}</td>
-        <td><span class="badge bg-secondary">{{ appt.get_status_display }}</span></td>
-      </tr>
-      {% empty %}<tr><td colspan="4" class="text-center text-muted">No appointments yet.</td></tr>{% endfor %}
-    </tbody>
-  </table>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr><th>Date</th><th>Doctor</th><th>Department</th><th>Status</th><th>Next Step</th><th>Outcome</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for appt in appointments %}
+        <tr>
+          <td>{{ appt.scheduled_date }}</td>
+          <td>Dr. {{ appt.doctor.get_full_name|default:"—" }}</td>
+          <td>{{ appt.department|default:"—" }}</td>
+          <td>
+            {% if appt.status == 'waiting' %}<span class="badge bg-warning text-dark">Waiting</span>
+            {% elif appt.status == 'consulting' %}<span class="badge bg-primary">Consulting</span>
+            {% elif appt.status == 'completed' %}<span class="badge bg-success">Completed</span>
+            {% elif appt.status == 'cancelled' %}<span class="badge bg-danger">Cancelled</span>
+            {% else %}<span class="badge bg-secondary">{{ appt.get_status_display }}</span>{% endif %}
+          </td>
+          <td>
+            {% if appt.next_step == 'lab' %}<span class="badge bg-info text-dark">🧪 Lab</span>
+            {% elif appt.next_step == 'pharmacy' %}<span class="badge bg-warning text-dark">💊 Pharmacy</span>
+            {% elif appt.next_step == 'ward' %}<span class="badge bg-danger">🏥 Ward</span>
+            {% elif appt.next_step == 'cashier' %}<span class="badge bg-success">💰 Cashier</span>
+            {% elif appt.next_step == 'home' %}<span class="badge bg-success">🏠 Home</span>
+            {% elif appt.next_step == 'doctor' %}<span class="badge bg-primary">👨‍⚕️ Doctor</span>
+            {% elif appt.next_step == 'reception' %}<span class="badge bg-secondary">📋 Reception</span>
+            {% elif appt.next_step == 'follow_up' %}<span class="badge bg-info text-dark">📅 Follow-up</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if appt.outcome %}
+              <span class="text-muted small">{{ appt.outcome }}</span>
+            {% elif appt.status == 'completed' %}
+              <span class="badge bg-light text-dark">Auto<br><small>Derived from visit data</small></span>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if appt.status != 'completed' and appt.status != 'cancelled' %}
+            <form method="POST" action="{% url 'update_next_step' appt.pk %}">{% csrf_token %}
+              <select name="next_step" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:130px;">
+                <option value="">Next step</option>
+                <option value="lab"       {% if appt.next_step == 'lab'       %}selected{% endif %}>Lab</option>
+                <option value="reception" {% if appt.next_step == 'reception' %}selected{% endif %}>Reception</option>
+                <option value="pharmacy"  {% if appt.next_step == 'pharmacy'  %}selected{% endif %}>Pharmacy</option>
+                <option value="ward"      {% if appt.next_step == 'ward'      %}selected{% endif %}>Ward</option>
+                <option value="cashier"   {% if appt.next_step == 'cashier'   %}selected{% endif %}>Cashier</option>
+                <option value="follow_up" {% if appt.next_step == 'follow_up' %}selected{% endif %}>Follow-up</option>
+                <option value="home"      {% if appt.next_step == 'home'      %}selected{% endif %}>Home</option>
+              </select>
+            </form>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No appointments yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}

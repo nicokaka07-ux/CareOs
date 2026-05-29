@@ -8,19 +8,28 @@ from opd.models import Appointment, Patient
 from accounts.decorators import role_required
 
 @login_required
-@role_required('nurse','admin')
+@role_required('nurse', 'admin')
 def triage_list(request):
-    today   = timezone.now().date()
+    today = timezone.now().date()
     pending = Appointment.objects.filter(
-        scheduled_date=today, status__in=['waiting','scheduled']
-    ).select_related('patient','doctor').exclude(triage__isnull=False)
+        scheduled_date=today,
+        status__in=['waiting', 'scheduled']
+    ).select_related('patient', 'doctor', 'department').exclude(
+        triage__isnull=False
+    ).order_by('queue_number')
+
     triaged = Appointment.objects.filter(
-        scheduled_date=today
-    ).select_related('patient').filter(triage__isnull=False)
-    return render(request, 'clinical/triage_list.html', {'pending':pending,'triaged':triaged})
+        scheduled_date=today,
+        triage__isnull=False
+    ).select_related('patient', 'doctor').order_by('queue_number')
+
+    return render(request, 'clinical/triage_list.html', {
+        'pending': pending,
+        'triaged': triaged,
+    })
 
 @login_required
-@role_required('nurse','admin')
+@role_required('nurse', 'admin')
 def record_triage(request, appointment_pk):
     appointment = get_object_or_404(Appointment, pk=appointment_pk)
     if hasattr(appointment, 'triage'):
@@ -34,24 +43,48 @@ def record_triage(request, appointment_pk):
             triage.patient     = appointment.patient
             triage.nurse       = request.user
             triage.save()
-            appointment.status = 'waiting'
+            appointment.status    = 'waiting'
+            appointment.next_step = 'doctor'   # ← explicitly routed to doctor
             appointment.save()
-            messages.success(request, f'Triage recorded for {appointment.patient.get_full_name()}.')
+            doctor_name = appointment.doctor.get_full_name() if appointment.doctor else 'their assigned doctor'
+            messages.success(request,
+                f'{appointment.patient.get_full_name()} triaged and sent to {doctor_name}.')
             return redirect('triage_list')
     else:
         form = TriageForm()
-    return render(request, 'clinical/record_triage.html', {'form':form,'appointment':appointment})
+    return render(request, 'clinical/record_triage.html', {
+        'form': form,
+        'appointment': appointment,
+    })
 
 @login_required
 @role_required('doctor','admin')
 def emr_dashboard(request):
     today = timezone.now().date()
+    
+    # Base query — admin sees all, doctor sees only their own
+    if request.user.role == 'admin':
+        my_appointments = Appointment.objects.filter(
+            scheduled_date=today,
+            status__in=['waiting', 'consulting', 'completed']
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number')
+    else:
+        my_appointments = Appointment.objects.filter(
+            scheduled_date=today,
+            doctor=request.user,              # ← only THIS doctor's patients
+            status__in=['waiting', 'consulting', 'completed']
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number')
+
+    waiting_count    = my_appointments.filter(status='waiting').count()
+    consulting_count = my_appointments.filter(status='consulting').count()
+    completed_count  = my_appointments.filter(status='completed').count()
+
     return render(request, 'clinical/emr_dashboard.html', {
-        'my_appointments': Appointment.objects.filter(
-            scheduled_date=today, doctor=request.user,
-            status__in=['waiting','consulting']
-        ).select_related('patient').order_by('queue_number'),
-        'today': today,
+        'my_appointments': my_appointments,
+        'waiting_count':   waiting_count,
+        'consulting_count': consulting_count,
+        'completed_count': completed_count,
+        'today':           today,
     })
 
 @login_required

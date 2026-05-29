@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404  # add redirect & get_object_or_404
+from django.contrib import messages                                  # add this
+from accounts.forms import StaffCreationForm, StaffPasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.db.models import Sum, Count
@@ -58,3 +60,42 @@ def audit_log_list(request):
 def staff_list(request):
     return render(request, 'administration/staff_list.html',
                   {'staff': StaffUser.objects.all().order_by('role','first_name')})
+@login_required
+@role_required('admin')
+def create_staff(request):
+    form = StaffCreationForm()
+    if request.method == 'POST':
+        form = StaffCreationForm(request.POST, request.FILES)
+        if form.is_valid():
+            user = form.save()
+            messages.success(request, f'Staff account created for {user.get_full_name()}.')
+            return redirect('staff_list')
+        messages.error(request, 'Please fix the errors below.')
+    return render(request, 'administration/create_staff.html', {'form': form})
+
+
+@login_required
+@role_required('admin')
+def reset_staff_password(request, pk):
+    staff = get_object_or_404(StaffUser, pk=pk)
+    form  = StaffPasswordChangeForm(user=staff)
+    if request.method == 'POST':
+        form = StaffPasswordChangeForm(user=staff, data=request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Password reset for {staff.get_full_name()}.')
+            return redirect('staff_list')
+        messages.error(request, 'Please fix the errors below.')
+    return render(request, 'administration/reset_password.html', {'form': form, 'staff': staff})
+@login_required
+@role_required('admin')
+def toggle_staff_status(request, pk):
+    staff = get_object_or_404(StaffUser, pk=pk)
+    if staff == request.user:
+        messages.error(request, "You can't deactivate your own account.")
+        return redirect('staff_list')
+    staff.is_active = not staff.is_active
+    staff.save(update_fields=['is_active'])
+    status = 'activated' if staff.is_active else 'deactivated'
+    messages.success(request, f'{staff.get_full_name()} has been {status}.')
+    return redirect('staff_list')

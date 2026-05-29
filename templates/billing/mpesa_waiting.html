@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Waiting for Payment...{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+
+      <div class="card shadow" id="status-card">
+        <div class="card-body py-5">
+
+          <!-- Pending state -->
+          <div id="pending-state">
+            <div class="spinner-border text-success mb-3" style="width:3rem;height:3rem;" role="status"></div>
+            <h4>Waiting for Payment...</h4>
+            <p class="text-muted">A prompt has been sent to <strong>{{ phone }}</strong></p>
+            <p class="text-muted">Ask the patient to enter their M-Pesa PIN now.</p>
+            <p class="mt-3"><strong>KES {{ amount }}</strong> for invoice <strong>{{ invoice.invoice_number }}</strong></p>
+          </div>
+
+          <!-- Success state (hidden initially) -->
+          <div id="success-state" style="display:none;">
+            <div class="text-success mb-3" style="font-size:4rem;">✅</div>
+            <h4 class="text-success">Payment Confirmed!</h4>
+            <p id="receipt-info" class="text-muted"></p>
+            <a href="{% url 'invoice_detail' pk=invoice.pk %}" class="btn btn-success mt-3">
+              View Invoice
+            </a>
+          </div>
+
+          <!-- Failed state (hidden initially) -->
+          <div id="failed-state" style="display:none;">
+            <div class="text-danger mb-3" style="font-size:4rem;">❌</div>
+            <h4 class="text-danger">Payment Failed or Cancelled</h4>
+            <p class="text-muted">The patient may have cancelled or entered wrong PIN.</p>
+            <a href="{% url 'mpesa_stk_push' invoice.pk %}" class="btn btn-warning mt-3">
+              Try Again
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const statusUrl = "{% url 'mpesa_payment_status' checkout_request_id %}";
+  let attempts = 0;
+  const maxAttempts = 36; // 3 minutes total
+
+  function checkStatus() {
+    fetch(statusUrl)
+      .then(res => res.json())
+      .then(data => {
+        attempts++;
+
+        if (data.status === 'success') {
+          document.getElementById('pending-state').style.display = 'none';
+          document.getElementById('success-state').style.display = 'block';
+          document.getElementById('receipt-info').textContent =
+            'Receipt: ' + data.receipt + ' — KES ' + data.amount;
+
+        } else if (data.status === 'failed') {
+          document.getElementById('pending-state').style.display = 'none';
+          document.getElementById('failed-state').style.display = 'block';
+
+        } else if (attempts < maxAttempts) {
+          setTimeout(checkStatus, 5000); // poll every 5 seconds
+        }
+      })
+      .catch(() => {
+        if (attempts < maxAttempts) setTimeout(checkStatus, 5000);
+      });
+  }
+
+  // Start polling after 5 seconds
+  setTimeout(checkStatus, 5000);
+</script>
+{% endblock %}

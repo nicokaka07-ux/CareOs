@@ -1,0 +1,29 @@
+<div class="stat-card mb-4">
+  <h6 class="fw-bold mb-3"><i class="bi bi-arrow-right-circle me-2 text-primary"></i>Send Patient To</h6>
+  <form method="POST" action="{% url 'update_next_step' appointment.pk %}">{% csrf_token %}
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Next Department</label>
+        <select name="next_step" class="form-select" required>
+          <option value="">— Select —</option>
+          <option value="lab">🧪 Lab</option>
+          <option value="pharmacy">💊 Pharmacy</option>
+          <option value="ward">🏥 Ward (Admission)</option>
+          <option value="reception">📋 Reception</option>
+          <option value="cashier">💰 Cashier</option>
+          <option value="follow_up">📅 Follow-up Appointment</option>
+          <option value="home">🏠 Discharge Home</option>
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-arrow-right-circle me-2"></i>Send Patient
+    </button>
+  </form>
+</div>
+
+<form method="POST" action="{% url 'complete_consultation' appointment.pk %}">{% csrf_token %}
+  <button class="btn btn-success btn-lg w-100">
+    <i class="bi bi-check-circle me-2"></i>Complete & Discharge Patient
+  </button>
+</form>

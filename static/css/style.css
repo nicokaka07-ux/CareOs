@@ -1,0 +1,31 @@
+html, body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100% !important;
+    min-width: 0;
+    position: relative !important;
+    left: 0;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1rem 1rem 0;
+    max-width: 100%;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .row.g-3 > [class*="col-"] {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+  }
+
+  .sidebar .nav-link {
+    padding: 0.75rem 1rem;
+  }
+}

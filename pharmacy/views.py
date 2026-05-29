@@ -27,7 +27,7 @@ def pharmacy_queue(request):
         pharmacy_appts = Appointment.objects.filter(
             scheduled_date=today,
             department=pharmacy_dept,
-            status__in=['scheduled','waiting','consulting']
+            status__in=['scheduled','waiting','consulting','completed']
         ).select_related('patient','doctor')
     except Department.DoesNotExist:
         pharmacy_appts = []
@@ -75,12 +75,16 @@ def drug_inventory(request):
     return render(request, 'pharmacy/inventory.html', {'drugs':drugs,'query':query})
 
 @login_required
-@role_required('pharmacist','admin')
+@role_required('pharmacist', 'admin')
 def add_drug(request):
     if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        if Drug.objects.filter(name__iexact=name).exists():
+            messages.error(request, f'"{name}" already exists in inventory. Use Restock to add more stock.')
+            return render(request, 'pharmacy/add_drug.html', {'categories': Drug.CATEGORY_CHOICES})
         Drug.objects.create(
-            name=request.POST.get('name'),
-            generic_name=request.POST.get('generic_name',''),
+            name=name,
+            generic_name=request.POST.get('generic_name', ''),
             category=request.POST.get('category'),
             unit=request.POST.get('unit'),
             buying_price=request.POST.get('buying_price'),
@@ -89,7 +93,7 @@ def add_drug(request):
             minimum_stock=request.POST.get('minimum_stock'),
             expiry_date=request.POST.get('expiry_date') or None,
         )
-        messages.success(request, f"{request.POST.get('name')} added to inventory.")
+        messages.success(request, f'{name} added to inventory.')
         return redirect('drug_inventory')
     return render(request, 'pharmacy/add_drug.html', {'categories': Drug.CATEGORY_CHOICES})
 

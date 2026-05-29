@@ -123,4 +123,51 @@
     </div>
   </div>
 </div>
-{% endblock %}
+{# ---- end of right column ---- #}
+  </div>  {# end row #}
+</div>    {# end outer div #}
+
+{# Send Patient To Next Department — MOVED INSIDE block content #}
+<div class="stat-card mb-4">
+  <h6 class="fw-bold mb-3">
+    <i class="bi bi-arrow-right-circle me-2 text-primary"></i>Send Patient To Next Department
+  </h6>
+  <p class="text-muted small mb-3">
+    <i class="bi bi-info-circle me-1"></i>
+    All patients must go through <strong>Billing/Cashier</strong> before being discharged.
+  </p>
+  <form method="POST" action="{% url 'update_next_step' appointment.pk %}">{% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-5">
+        <label class="form-label fw-semibold">Send to Department</label>
+        <select name="next_step" class="form-select" required>
+          <option value="">— Select Department —</option>
+          <optgroup label="Clinical Departments">
+            <option value="lab">🧪 Laboratory</option>
+            <option value="pharmacy">💊 Pharmacy</option>
+            <option value="ward">🏥 Ward (Admit Patient)</option>
+            <option value="physiotherapy">🦾 Physiotherapy</option>
+            <option value="nutrition">🥗 Nutrition / Dietitian</option>
+          </optgroup>
+          <optgroup label="Specialist Referrals">
+            <option value="doctor">👨‍⚕️ Back to Doctor</option>
+            <option value="dental">🦷 Dental</option>
+            <option value="optical">👁️ Optical / Eye Clinic</option>
+          </optgroup>
+          <optgroup label="Discharge">
+            <option value="cashier">💰 Billing & Cashier</option>
+            <option value="follow_up">📅 Follow-up Appointment</option>
+            <option value="discharged">🏠 Discharge Home</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-arrow-right-circle me-2"></i>Send Patient
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% endblock %}  {# only ONE endblock at the very end #}

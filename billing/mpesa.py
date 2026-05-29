@@ -132,7 +132,6 @@ def stk_push(phone_number, amount, invoice_number):
                 return e.response.json()
             except Exception:
                 return {'ResponseCode': '1', 'errorMessage': e.response.text or error_msg}
-        return {'ResponseCode': '1', 'errorMessage': error_msg}
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
         logger.error(error_msg)

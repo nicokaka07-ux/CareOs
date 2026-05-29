@@ -27,14 +27,31 @@
           <td><strong>#{{ appt.queue_number }}</strong></td>
           <td>{{ appt.patient.get_full_name }}<br><small class="text-muted">{{ appt.patient.patient_id }}</small></td>
           <td>{{ appt.scheduled_time|time:"H:i" }}</td>
-          <td>{% if appt.status == 'waiting' %}<span class="badge bg-warning text-dark">Waiting</span>{% elif appt.status == 'consulting' %}<span class="badge bg-primary">In Service</span>{% else %}<span class="badge bg-secondary">Scheduled</span>{% endif %}</td>
           <td>
-            <form method="POST" action="{% url 'update_appointment_status' appt.pk %}">{% csrf_token %}
+            {% if appt.status == 'waiting' %}<span class="badge bg-warning text-dark">Waiting</span>
+            {% elif appt.status == 'consulting' %}<span class="badge bg-primary">In Service</span>
+            {% elif appt.status == 'completed' %}<span class="badge bg-success">Completed</span>
+            {% else %}<span class="badge bg-secondary">Scheduled</span>{% endif %}
+          </td>
+          <td>
+            <form method="POST" action="{% url 'update_appointment_status' appt.pk %}" class="d-flex gap-2 align-items-center">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'pharmacy_queue' %}" />
               <select name="status" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
                 <option value="scheduled" {% if appt.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
                 <option value="waiting"   {% if appt.status == 'waiting'   %}selected{% endif %}>Waiting</option>
                 <option value="consulting"{% if appt.status == 'consulting'%}selected{% endif %}>In Service</option>
                 <option value="completed" {% if appt.status == 'completed' %}selected{% endif %}>Completed</option>
+              </select>
+              <select name="next_step" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
+                <option value="" {% if not appt.next_step %}selected{% endif %}>—</option>
+                <option value="lab" {% if appt.next_step == 'lab' %}selected{% endif %}>Lab</option>
+                <option value="reception" {% if appt.next_step == 'reception' %}selected{% endif %}>Reception</option>
+                <option value="pharmacy" {% if appt.next_step == 'pharmacy' %}selected{% endif %}>Pharmacy</option>
+                <option value="ward" {% if appt.next_step == 'ward' %}selected{% endif %}>Ward</option>
+                <option value="cashier" {% if appt.next_step == 'cashier' %}selected{% endif %}>Cashier</option>
+                <option value="follow_up" {% if appt.next_step == 'follow_up' %}selected{% endif %}>Follow-up</option>
+                <option value="home" {% if appt.next_step == 'home' %}selected{% endif %}>Home</option>
               </select>
             </form>
           </td>

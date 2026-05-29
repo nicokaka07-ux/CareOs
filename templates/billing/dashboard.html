@@ -16,7 +16,7 @@
   <h6 class="fw-bold">Today's Invoices</h6>
   <a href="{% url 'create_invoice' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>New Invoice</a>
 </div>
-<div class="stat-card">
+<div class="stat-card mb-4">
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
@@ -35,6 +35,62 @@
           </td>
         </tr>
         {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No invoices today.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between mb-3">
+  <h6 class="fw-bold">Unpaid Invoices</h6>
+  <span class="text-muted small">Older invoices that still need payment</span>
+</div>
+<div class="stat-card mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for inv in unpaid_invoices %}
+        <tr>
+          <td><code>{{ inv.invoice_number }}</code></td>
+          <td>{{ inv.patient.get_full_name }}<br/><small class="text-muted">{{ inv.patient.patient_id }}</small></td>
+          <td>KES {{ inv.total|floatformat:2 }}</td>
+          <td class="text-success">KES {{ inv.amount_paid|floatformat:2 }}</td>
+          <td class="{% if inv.balance > 0 %}text-danger fw-bold{% endif %}">KES {{ inv.balance|floatformat:2 }}</td>
+          <td><span class="badge bg-danger">Unpaid</span></td>
+          <td>
+            <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+            <a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No unpaid invoices found.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between mb-3">
+  <h6 class="fw-bold">All Invoices</h6>
+  <span class="text-muted small">Recent invoices across all payment statuses</span>
+</div>
+<div class="stat-card">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for inv in all_invoices %}
+        <tr>
+          <td><code>{{ inv.invoice_number }}</code></td>
+          <td>{{ inv.patient.get_full_name }}<br/><small class="text-muted">{{ inv.patient.patient_id }}</small></td>
+          <td>KES {{ inv.total|floatformat:2 }}</td>
+          <td class="text-success">KES {{ inv.amount_paid|floatformat:2 }}</td>
+          <td class="{% if inv.balance > 0 %}text-danger fw-bold{% endif %}">KES {{ inv.balance|floatformat:2 }}</td>
+          <td>{% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>{% elif inv.status == 'partial' %}<span class="badge bg-warning text-dark">Partial</span>{% else %}<span class="badge bg-danger">Unpaid</span>{% endif %}</td>
+          <td>
+            <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
+            {% if inv.status != 'paid' %}<a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>{% endif %}
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No invoices found.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
