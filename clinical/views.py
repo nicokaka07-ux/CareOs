@@ -7,26 +7,28 @@ from .forms import TriageForm, ConsultationForm, LabOrderForm, PrescriptionForm
 from opd.models import Appointment, Patient
 from accounts.decorators import role_required
 
+
 @login_required
 @role_required('nurse', 'admin')
 def triage_list(request):
     today = timezone.now().date()
     pending = Appointment.objects.filter(
         scheduled_date=today,
-        status__in=['waiting', 'scheduled']
+        status__in=['waiting', 'scheduled'],
     ).select_related('patient', 'doctor', 'department').exclude(
         triage__isnull=False
     ).order_by('queue_number')
 
     triaged = Appointment.objects.filter(
         scheduled_date=today,
-        triage__isnull=False
+        triage__isnull=False,
     ).select_related('patient', 'doctor').order_by('queue_number')
 
     return render(request, 'clinical/triage_list.html', {
         'pending': pending,
         'triaged': triaged,
     })
+
 
 @login_required
 @role_required('nurse', 'admin')
@@ -44,7 +46,7 @@ def record_triage(request, appointment_pk):
             triage.nurse       = request.user
             triage.save()
             appointment.status    = 'waiting'
-            appointment.next_step = 'doctor'   # ← explicitly routed to doctor
+            appointment.next_step = 'doctor'
             appointment.save()
             doctor_name = appointment.doctor.get_full_name() if appointment.doctor else 'their assigned doctor'
             messages.success(request,
@@ -57,22 +59,22 @@ def record_triage(request, appointment_pk):
         'appointment': appointment,
     })
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def emr_dashboard(request):
     today = timezone.now().date()
-    
-    # Base query — admin sees all, doctor sees only their own
+
     if request.user.role == 'admin':
         my_appointments = Appointment.objects.filter(
             scheduled_date=today,
-            status__in=['waiting', 'consulting', 'completed']
+            status__in=['waiting', 'consulting', 'completed'],
         ).select_related('patient', 'doctor', 'department').order_by('queue_number')
     else:
         my_appointments = Appointment.objects.filter(
             scheduled_date=today,
-            doctor=request.user,              # ← only THIS doctor's patients
-            status__in=['waiting', 'consulting', 'completed']
+            doctor=request.user,
+            status__in=['waiting', 'consulting', 'completed'],
         ).select_related('patient', 'doctor', 'department').order_by('queue_number')
 
     waiting_count    = my_appointments.filter(status='waiting').count()
@@ -80,15 +82,16 @@ def emr_dashboard(request):
     completed_count  = my_appointments.filter(status='completed').count()
 
     return render(request, 'clinical/emr_dashboard.html', {
-        'my_appointments': my_appointments,
-        'waiting_count':   waiting_count,
+        'my_appointments':  my_appointments,
+        'waiting_count':    waiting_count,
         'consulting_count': consulting_count,
-        'completed_count': completed_count,
-        'today':           today,
+        'completed_count':  completed_count,
+        'today':            today,
     })
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def patient_emr(request, appointment_pk):
     appointment  = get_object_or_404(Appointment, pk=appointment_pk)
     patient      = appointment.patient
@@ -104,10 +107,14 @@ def patient_emr(request, appointment_pk):
         'consultation_form':  ConsultationForm(instance=consultation),
         'lab_form':           LabOrderForm(),
         'prescription_form':  PrescriptionForm(),
+        # Current consultation's orders (for display in EMR)
+        'lab_orders':         consultation.lab_orders.all() if consultation else [],
+        'prescriptions':      consultation.prescriptions.all() if consultation else [],
     })
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def save_consultation(request, appointment_pk):
     appointment  = get_object_or_404(Appointment, pk=appointment_pk)
     consultation = getattr(appointment, 'consultation', None)
@@ -126,8 +133,9 @@ def save_consultation(request, appointment_pk):
             messages.error(request, 'Error saving consultation.')
     return redirect('patient_emr', appointment_pk=appointment_pk)
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def add_lab_order(request, appointment_pk):
     appointment  = get_object_or_404(Appointment, pk=appointment_pk)
     consultation = get_object_or_404(Consultation, appointment=appointment)
@@ -140,10 +148,24 @@ def add_lab_order(request, appointment_pk):
             lab.doctor       = request.user
             lab.save()
             messages.success(request, f'Lab order added: {lab.test_name}')
+        else:
+            messages.error(request, 'Error adding lab order.')
     return redirect('patient_emr', appointment_pk=appointment_pk)
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
+def delete_lab_order(request, pk):
+    lab = get_object_or_404(LabOrder, pk=pk)
+    appointment_pk = lab.consultation.appointment.pk
+    if request.method == 'POST':
+        lab.delete()
+        messages.success(request, 'Lab order removed.')
+    return redirect('patient_emr', appointment_pk=appointment_pk)
+
+
+@login_required
+@role_required('doctor', 'admin')
 def add_prescription(request, appointment_pk):
     appointment  = get_object_or_404(Appointment, pk=appointment_pk)
     consultation = get_object_or_404(Consultation, appointment=appointment)
@@ -156,10 +178,24 @@ def add_prescription(request, appointment_pk):
             rx.doctor       = request.user
             rx.save()
             messages.success(request, f'Prescription added: {rx.medication_name}')
+        else:
+            messages.error(request, 'Error adding prescription.')
     return redirect('patient_emr', appointment_pk=appointment_pk)
 
+
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
+def delete_prescription(request, pk):
+    rx = get_object_or_404(Prescription, pk=pk)
+    appointment_pk = rx.consultation.appointment.pk
+    if request.method == 'POST':
+        rx.delete()
+        messages.success(request, 'Prescription removed.')
+    return redirect('patient_emr', appointment_pk=appointment_pk)
+
+
+@login_required
+@role_required('doctor', 'admin')
 def complete_consultation(request, appointment_pk):
     appointment        = get_object_or_404(Appointment, pk=appointment_pk)
     appointment.status = 'completed'

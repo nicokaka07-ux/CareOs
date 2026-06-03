@@ -1,15 +1,19 @@
 from django.db import models
 from django.utils import timezone
 
+
 def generate_patient_id():
     year  = timezone.now().year
     count = Patient.objects.filter(created_at__year=year).count() + 1
     return f"COS-{year}-{count:05d}"
 
+
 class Patient(models.Model):
     GENDER_CHOICES      = [('male','Male'),('female','Female'),('other','Other')]
-    BLOOD_GROUP_CHOICES = [('A+','A+'),('A-','A-'),('B+','B+'),('B-','B-'),
-                           ('AB+','AB+'),('AB-','AB-'),('O+','O+'),('O-','O-'),('unknown','Unknown')]
+    BLOOD_GROUP_CHOICES = [
+        ('A+','A+'),('A-','A-'),('B+','B+'),('B-','B-'),
+        ('AB+','AB+'),('AB-','AB-'),('O+','O+'),('O-','O-'),('unknown','Unknown'),
+    ]
 
     patient_id    = models.CharField(max_length=20, unique=True, editable=False)
     first_name    = models.CharField(max_length=100)
@@ -38,21 +42,31 @@ class Patient(models.Model):
             self.patient_id = generate_patient_id()
         super().save(*args, **kwargs)
 
-    def get_full_name(self): return f"{self.first_name} {self.last_name}"
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def get_age(self):
         today = timezone.now().date()
         dob   = self.date_of_birth
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-    def __str__(self): return f"{self.patient_id} — {self.get_full_name()}"
-    class Meta: ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_id} — {self.get_full_name()}"
+
+    class Meta:
+        ordering = ['-created_at']
+
 
 class Department(models.Model):
     name      = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
-    def __str__(self): return self.name
+
+    def __str__(self):
+        return self.name
+
 
 class Appointment(models.Model):
-    OUTCOME_CHOICES = [                        # ← fixed: 4-space indent
+    OUTCOME_CHOICES = [
         ('treated',       'Treated'),
         ('discharged',    'Discharged'),
         ('admitted',      'Admitted'),
@@ -73,22 +87,22 @@ class Appointment(models.Model):
         ('emergency', 'Emergency'),
     ]
     NEXT_STEP_CHOICES = [
-        ('',            'Next step'),
-        ('triage',      'Triage'),
-        ('doctor',      'Doctor'),
-        ('lab',         'Lab'),
-        ('reception',   'Reception'),
-        ('pharmacy',    'Pharmacy'),
-        ('ward',        'Ward'),
-        ('cashier',     'Cashier'),
-        ('follow_up',   'Follow-up'),
-        ('home',        'Home'),
-        ('discharged',  'Discharged'),
-        ('admitted',    'Admitted'),
-        ('nutrition',   'Nutrition'),
-        ('physiotherapy','Physiotherapy'),
-        ('dental',      'Dental'),
-        ('optical',     'Optical'),
+        ('',              'Next step'),
+        ('triage',        'Triage'),
+        ('doctor',        'Doctor'),
+        ('lab',           'Lab'),
+        ('reception',     'Reception'),
+        ('pharmacy',      'Pharmacy'),
+        ('ward',          'Ward'),
+        ('cashier',       'Cashier'),
+        ('follow_up',     'Follow-up'),
+        ('home',          'Home'),
+        ('discharged',    'Discharged'),
+        ('admitted',      'Admitted'),
+        ('nutrition',     'Nutrition'),
+        ('physiotherapy', 'Physiotherapy'),
+        ('dental',        'Dental'),
+        ('optical',       'Optical'),
     ]
 
     patient        = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
@@ -103,7 +117,9 @@ class Appointment(models.Model):
     queue_number   = models.PositiveIntegerField(null=True, blank=True)
     reminder_sent  = models.BooleanField(default=False)
     next_step      = models.CharField(max_length=20, choices=NEXT_STEP_CHOICES, default='', blank=True)
-    outcome        = models.CharField(max_length=20, choices=OUTCOME_CHOICES, blank=True, default='')  # ← fixed
+    # NOTE: outcome stores both choice keys ('treated') and free-text strings
+    # ('Referred to Pharmacy'). The views handle both cases gracefully.
+    outcome        = models.CharField(max_length=100, blank=True, default='')
     created_at     = models.DateTimeField(auto_now_add=True)
     created_by     = models.ForeignKey('accounts.StaffUser', on_delete=models.SET_NULL,
                                        null=True, blank=True, related_name='created_appointments')
@@ -112,11 +128,12 @@ class Appointment(models.Model):
         if not self.queue_number:
             count = Appointment.objects.filter(
                 scheduled_date=self.scheduled_date,
-                department=self.department).count()
+                department=self.department,
+            ).count()
             self.queue_number = count + 1
         super().save(*args, **kwargs)
 
-    def can_be_managed_by(self, user):           # ← added
+    def can_be_managed_by(self, user):
         role = getattr(user, 'role', None)
         if role == 'admin':
             return True
@@ -133,11 +150,16 @@ class Appointment(models.Model):
     def get_next_step_display_label(self):
         return dict(self.NEXT_STEP_CHOICES).get(self.next_step, '—')
 
+    def get_outcome_display(self):
+        """Return display label; falls back to raw value for free-text outcomes."""
+        return dict(self.OUTCOME_CHOICES).get(self.outcome, self.outcome)
+
     def __str__(self):
         return f"#{self.queue_number} — {self.patient.get_full_name()}"
-   
-class Meta:
+
+    class Meta:                          # ← FIXED: was outside the class
         ordering = ['scheduled_date', 'scheduled_time']
+
 
 class MortalityRecord(models.Model):
     patient          = models.OneToOneField(Patient, on_delete=models.CASCADE, related_name='mortality')
@@ -150,5 +172,9 @@ class MortalityRecord(models.Model):
     recorded_by      = models.ForeignKey('accounts.StaffUser', on_delete=models.SET_NULL,
                                           null=True, related_name='recorded_mortalities')
     created_at       = models.DateTimeField(auto_now_add=True)
-    def __str__(self): return f"{self.patient.get_full_name()} — deceased"
-    class Meta: ordering = ['-date_of_death']
+
+    def __str__(self):
+        return f"{self.patient.get_full_name()} — deceased"
+
+    class Meta:
+        ordering = ['-date_of_death']

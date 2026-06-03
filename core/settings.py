@@ -94,8 +94,20 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'CareOS HMS <noreply@careos.com>'
+# Email Configuration for OTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'careos903@gmail.com'
+EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD', default='')  # Set via environment variable
+DEFAULT_FROM_EMAIL = 'CareOS HMS <careos903@gmail.com>'
+SERVER_EMAIL = 'careos903@gmail.com'
+OTP_FALLBACK_EMAIL = 'careos903@gmail.com'
+
+# Fallback to console backend if no password is set
+if not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Ensure logs directory exists
 LOGS_DIR = BASE_DIR / 'logs'

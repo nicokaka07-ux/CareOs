@@ -10,4 +10,5 @@ urlpatterns = [
     path('mpesa/callback/',                   views.mpesa_callback,    name='mpesa_callback'),
  path('mpesa/status/<str:checkout_request_id>/', views.mpesa_payment_status, name='mpesa_payment_status'), 
 path('mpesa/waiting/<str:checkout_request_id>/', views.mpesa_waiting, name='mpesa_waiting'),  
+path('invoice/<int:pk>/print/', views.invoice_print, name='invoice_print'),
 ]

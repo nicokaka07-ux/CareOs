@@ -10,11 +10,28 @@ from accounts.decorators import role_required
 
 
 OUTCOME_BADGE_CLASSES = {
-    'treated': 'success',
-    'discharged': 'secondary',
-    'admitted': 'warning',
-    'medicine_only': 'info',
-    'died': 'danger',
+    'treated':      'success',
+    'discharged':   'secondary',
+    'admitted':     'warning',
+    'medicine_only':'info',
+    'died':         'danger',
+}
+
+# Free-text outcomes written by update_next_step → badge colour
+_FREE_TEXT_OUTCOME_CLASSES = {
+    'referred to pharmacy':              'info',
+    'referred to lab':                   'primary',
+    'referred to ward':                  'warning',
+    'referred to dental':                'secondary',
+    'referred to optical':               'secondary',
+    'referred to physiotherapy':         'secondary',
+    'referred to nutrition':             'secondary',
+    'sent to billing & cashier':         'warning',
+    'sent to cashier/billing before discharge': 'warning',
+    'admitted to ward':                  'warning',
+    'returning to doctor':               'primary',
+    'discharged home':                   'secondary',
+    'follow-up appointment required':    'info',
 }
 
 
@@ -44,7 +61,18 @@ def _get_patient_outcome(patient):
         return 'Died', 'danger'
 
     if latest_appointment.outcome:
-        return latest_appointment.get_outcome_display(), OUTCOME_BADGE_CLASSES[latest_appointment.outcome]
+        # outcome may be a choice key ('treated') OR a free-text string
+        # ('Referred to Pharmacy') written by update_next_step
+        badge = OUTCOME_BADGE_CLASSES.get(latest_appointment.outcome)
+        if badge:
+            # It's a proper choice key — use get_outcome_display()
+            return latest_appointment.get_outcome_display(), badge
+
+        # Fall back to free-text lookup (case-insensitive)
+        badge = _FREE_TEXT_OUTCOME_CLASSES.get(
+            latest_appointment.outcome.lower(), 'primary'
+        )
+        return latest_appointment.outcome, badge
 
     if latest_appointment.status == 'completed':
         consultation = getattr(latest_appointment, 'consultation', None)
@@ -55,7 +83,9 @@ def _get_patient_outcome(patient):
         if has_prescriptions:
             return 'Medication only', 'info'
 
-        department_name = (latest_appointment.department.name if latest_appointment.department else '').lower()
+        department_name = (
+            latest_appointment.department.name if latest_appointment.department else ''
+        ).lower()
         if any(token in department_name for token in ('admit', 'admission', 'ward', 'inpatient', 'ipd')):
             return 'Admitted', 'warning'
 
@@ -72,7 +102,9 @@ def _get_patient_outcome(patient):
 
 def _redirect_after_appointment_action(request, appointment, default_view='patient_detail'):
     next_url = request.POST.get('next') or request.GET.get('next')
-    if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
         return redirect(next_url)
 
     if appointment.patient_id and default_view == 'patient_detail':
@@ -81,7 +113,7 @@ def _redirect_after_appointment_action(request, appointment, default_view='patie
 
 
 @login_required
-@role_required('receptionist','admin')
+@role_required('receptionist', 'admin')
 def opd_dashboard(request):
     today = timezone.now().date()
     return render(request, 'opd/dashboard.html', {
@@ -89,11 +121,12 @@ def opd_dashboard(request):
         'today_appointments': Appointment.objects.filter(scheduled_date=today).count(),
         'waiting_count':      Appointment.objects.filter(scheduled_date=today, status='waiting').count(),
         'consulting_count':   Appointment.objects.filter(scheduled_date=today, status='consulting').count(),
-        'today_schedule':     Appointment.objects.filter(scheduled_date=today).select_related('patient','doctor'),
+        'today_schedule':     Appointment.objects.filter(scheduled_date=today).select_related('patient', 'doctor'),
     })
 
+
 @login_required
-@role_required('receptionist','admin')
+@role_required('receptionist', 'admin')
 def register_patient(request):
     form = PatientRegistrationForm()
     if request.method == 'POST':
@@ -105,12 +138,13 @@ def register_patient(request):
         messages.error(request, 'Please fix the errors below.')
     return render(request, 'opd/register_patient.html', {'form': form})
 
+
 @login_required
 def patient_list(request):
-    query = request.GET.get('q','')
-    visit_date = request.GET.get('visit_date','')
+    query              = request.GET.get('q', '')
+    visit_date         = request.GET.get('visit_date', '')
     appointment_status = request.GET.get('appointment_status', 'all')
-    today = timezone.now().date()
+    today              = timezone.now().date()
 
     patients = Patient.objects.filter(
         Q(is_active=True) | Q(mortality__isnull=False),
@@ -118,7 +152,7 @@ def patient_list(request):
     )
     patients = patients.annotate(
         visit_count=Count('appointments', distinct=True),
-        last_visit_date=Max('appointments__scheduled_date')
+        last_visit_date=Max('appointments__scheduled_date'),
     ).filter(last_visit_date__isnull=False).order_by('-last_visit_date')
 
     if appointment_status == 'today':
@@ -128,8 +162,9 @@ def patient_list(request):
 
     if query:
         patients = patients.filter(
-            Q(first_name__icontains=query)|Q(last_name__icontains=query)|
-            Q(patient_id__icontains=query)|Q(phone__icontains=query))
+            Q(first_name__icontains=query) | Q(last_name__icontains=query) |
+            Q(patient_id__icontains=query) | Q(phone__icontains=query)
+        )
     if visit_date:
         patients = patients.filter(appointments__scheduled_date=visit_date)
 
@@ -142,30 +177,36 @@ def patient_list(request):
         patient.outcome_label, patient.outcome_class = _get_patient_outcome(patient)
 
     return render(request, 'opd/patient_list.html', {
-        'patients': patients,
-        'query': query,
-        'visit_date': visit_date,
-        'appointment_status': appointment_status,
+        'patients':               patients,
+        'query':                  query,
+        'visit_date':             visit_date,
+        'appointment_status':     appointment_status,
         'appointment_status_label': {
-            'all': 'All patients',
-            'today': 'Today appointments',
-            'waiting': 'Waiting room',
+            'all':        'All patients',
+            'today':      'Today appointments',
+            'waiting':    'Waiting room',
             'consulting': 'In consultation',
         }.get(appointment_status, 'All patients'),
     })
+
 
 @login_required
 def patient_detail(request, pk):
     patient      = get_object_or_404(Patient, pk=pk)
     appointments = patient.appointments.order_by('-scheduled_date')
-    return render(request, 'opd/patient_detail.html', {'patient':patient,'appointments':appointments})
+    return render(request, 'opd/patient_detail.html', {
+        'patient':      patient,
+        'appointments': appointments,
+    })
+
 
 @login_required
-@role_required('receptionist','admin')
+@role_required('receptionist', 'admin')
 def book_appointment(request):
     initial = {}
     pid = request.GET.get('patient')
-    if pid: initial['patient'] = pid
+    if pid:
+        initial['patient'] = pid
     if request.method == 'POST':
         form = AppointmentForm(request.POST)
         if form.is_valid():
@@ -177,14 +218,14 @@ def book_appointment(request):
         messages.error(request, 'Please fix the errors below.')
     else:
         form = AppointmentForm(initial=initial)
-    return render(request, 'opd/book_appointment.html', {'form':form})
+    return render(request, 'opd/book_appointment.html', {'form': form})
 
 
 @login_required
-@role_required('receptionist','admin')
+@role_required('receptionist', 'admin')
 def update_appointment_outcome(request, pk):
     appointment = get_object_or_404(Appointment, pk=pk)
-    outcome = request.POST.get('outcome', '')
+    outcome     = request.POST.get('outcome', '')
 
     valid_outcomes = dict(Appointment.OUTCOME_CHOICES)
     if outcome not in valid_outcomes and outcome != '':
@@ -197,7 +238,7 @@ def update_appointment_outcome(request, pk):
     if outcome:
         messages.success(request, f'Outcome updated to {appointment.get_outcome_display()}.')
     else:
-        messages.success(request, 'Outcome cleared and will use the automatic value again.')
+        messages.success(request, 'Outcome cleared.')
 
     return redirect('patient_list')
 
@@ -206,20 +247,21 @@ def update_appointment_outcome(request, pk):
 def queue_board(request):
     today = timezone.now().date()
     return render(request, 'opd/queue_board.html', {
-        'waiting':    Appointment.objects.filter(
+        'waiting':   Appointment.objects.filter(
             scheduled_date=today, status='waiting'
-        ).select_related('patient','doctor','department').order_by('queue_number'),
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number'),
         'consulting': Appointment.objects.filter(
             scheduled_date=today, status='consulting'
-        ).select_related('patient','doctor','department').order_by('queue_number'),
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number'),
         'scheduled':  Appointment.objects.filter(
             scheduled_date=today, status='scheduled'
-        ).select_related('patient','doctor','department').order_by('queue_number'),
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number'),
         'completed':  Appointment.objects.filter(
             scheduled_date=today, status='completed'
-        ).select_related('patient','doctor','department').order_by('queue_number'),
+        ).select_related('patient', 'doctor', 'department').order_by('queue_number'),
         'today': today,
     })
+
 
 @login_required
 def update_appointment_status(request, pk):
@@ -228,10 +270,10 @@ def update_appointment_status(request, pk):
     if not appt.can_be_managed_by(request.user):
         return render(request, '403.html', status=403)
 
-    new = request.POST.get('status')
+    new       = request.POST.get('status')
     next_step = request.POST.get('next_step', '')
 
-    valid_statuses = ['scheduled','waiting','consulting','completed','cancelled']
+    valid_statuses   = ['scheduled', 'waiting', 'consulting', 'completed', 'cancelled']
     valid_next_steps = dict(Appointment.NEXT_STEP_CHOICES)
 
     if new not in valid_statuses:
@@ -242,7 +284,7 @@ def update_appointment_status(request, pk):
         messages.error(request, 'Please select a valid next step.')
         return _redirect_after_appointment_action(request, appt)
 
-    appt.status = new
+    appt.status    = new
     appt.next_step = next_step
     appt.save(update_fields=['status', 'next_step'])
 
@@ -251,16 +293,17 @@ def update_appointment_status(request, pk):
         messages.info(request, f'Next step marked as {appt.get_next_step_display()}.')
 
     return _redirect_after_appointment_action(request, appt)
-    return redirect('queue_board')
+
 
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def mortality_list(request):
-    records = MortalityRecord.objects.select_related('patient','attending_doctor','recorded_by')
-    return render(request, 'opd/mortality_list.html', {'records':records})
+    records = MortalityRecord.objects.select_related('patient', 'attending_doctor', 'recorded_by')
+    return render(request, 'opd/mortality_list.html', {'records': records})
+
 
 @login_required
-@role_required('doctor','admin')
+@role_required('doctor', 'admin')
 def record_mortality(request):
     if request.method == 'POST':
         patient           = get_object_or_404(Patient, pk=request.POST.get('patient'))
@@ -271,14 +314,16 @@ def record_mortality(request):
             date_of_death=request.POST.get('date_of_death'),
             cause_of_death=request.POST.get('cause_of_death'),
             attending_doctor=request.user,
-            ward=request.POST.get('ward',''),
-            notes=request.POST.get('notes',''),
+            ward=request.POST.get('ward', ''),
+            notes=request.POST.get('notes', ''),
             recorded_by=request.user,
         )
         messages.success(request, f'Mortality record saved for {patient.get_full_name()}.')
         return redirect('mortality_list')
     return render(request, 'opd/record_mortality.html',
                   {'patients': Patient.objects.filter(is_active=True)})
+
+
 @login_required
 def update_next_step(request, pk):
     appt      = get_object_or_404(Appointment, pk=pk)
@@ -286,7 +331,6 @@ def update_next_step(request, pk):
     appt.next_step = next_step
 
     if next_step == 'home':
-        # Must go to billing before home
         appt.next_step = 'cashier'
         appt.outcome   = 'Sent to Cashier/Billing before discharge'
         appt.status    = 'consulting'

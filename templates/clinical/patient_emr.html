@@ -17,6 +17,7 @@
     <div class="col-auto"><div class="opacity-75 small">Queue</div><div class="fs-1 fw-bold">#{{ appointment.queue_number }}</div></div>
   </div>
 </div>
+
 <div class="row g-4">
   <div class="col-md-8">
     {% if triage %}
@@ -35,6 +36,7 @@
       <div class="mt-2 small text-muted"><strong>Chief Complaint:</strong> {{ triage.chief_complaint }}</div>
     </div>
     {% else %}<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>No triage vitals recorded for this visit.</div>{% endif %}
+
     <div class="stat-card mb-4">
       <h6 class="fw-bold text-primary mb-3"><i class="bi bi-pencil-square me-2"></i>Consultation Notes</h6>
       <form method="POST" action="{% url 'save_consultation' appointment.pk %}">{% csrf_token %}
@@ -49,49 +51,145 @@
         <button type="submit" class="btn btn-primary mt-3"><i class="bi bi-save me-1"></i>Save Notes</button>
       </form>
     </div>
-    {% if consultation %}
+
+    <!-- Lab Orders Section -->
     <div class="stat-card mb-4">
       <h6 class="fw-bold text-success mb-3"><i class="bi bi-eyedropper me-2"></i>Lab Orders</h6>
-      {% for lab in consultation.lab_orders.all %}
-      <div class="d-flex justify-content-between border rounded p-2 mb-2">
-        <div><span class="fw-semibold">{{ lab.test_name }}</span>{% if lab.instructions %}<div class="text-muted small">{{ lab.instructions }}</div>{% endif %}</div>
-        <span class="badge bg-secondary">{{ lab.get_status_display }}</span>
-      </div>
-      {% empty %}<p class="text-muted small">No lab orders yet.</p>{% endfor %}
-      <form method="POST" action="{% url 'add_lab_order' appointment.pk %}" class="mt-3 border-top pt-3">{% csrf_token %}
-        <div class="row g-2">
-          <div class="col-md-5">{{ lab_form.test_name }}</div>
-          <div class="col-md-5">{{ lab_form.instructions }}</div>
-          <div class="col-md-2"><button class="btn btn-success w-100"><i class="bi bi-plus"></i></button></div>
+      {% if consultation %}
+        {% if consultation.lab_orders.all %}
+        <div class="mb-3">
+          {% for lab in consultation.lab_orders.all %}
+          <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div>
+              <span class="fw-semibold">{{ lab.test_name }}</span>
+              {% if lab.instructions %}<div class="text-muted small mt-1">{{ lab.instructions }}</div>{% endif %}
+            </div>
+            <div class="text-end">
+              <span class="badge bg-{% if lab.status == 'ordered' %}info{% elif lab.status == 'processing' %}warning{% elif lab.status == 'completed' %}success{% else %}secondary{% endif %}">
+                {{ lab.get_status_display }}
+              </span>
+              <form method="POST" action="{% url 'delete_lab_order' lab.pk %}" style="display:inline;" onsubmit="return confirm('Remove this lab order?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger ms-1"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-      </form>
+        {% else %}
+        <p class="text-muted small mb-3">No lab orders yet.</p>
+        {% endif %}
+        <form method="POST" action="{% url 'add_lab_order' appointment.pk %}" class="border-top pt-3">{% csrf_token %}
+          <div class="row g-2">
+            <div class="col-md-5">{{ lab_form.test_name }}</div>
+            <div class="col-md-5">{{ lab_form.instructions }}</div>
+            <div class="col-md-2"><button class="btn btn-success w-100"><i class="bi bi-plus me-1"></i>Add</button></div>
+          </div>
+        </form>
+      {% else %}
+      <div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i><strong>Save consultation notes</strong> to add lab orders.</div>
+      {% endif %}
     </div>
+
+    <!-- Drug Prescriptions Section -->
     <div class="stat-card mb-4">
-      <h6 class="fw-bold text-warning mb-3"><i class="bi bi-capsule me-2"></i>Prescriptions</h6>
-      {% for rx in consultation.prescriptions.all %}
-      <div class="border rounded p-2 mb-2">
-        <div class="fw-semibold">{{ rx.medication_name }}</div>
-        <div class="text-muted small">{{ rx.dosage }} | {{ rx.frequency }} | {{ rx.duration }} | Qty: {{ rx.quantity }}</div>
-        <span class="badge bg-warning text-dark">{{ rx.get_status_display }}</span>
-      </div>
-      {% empty %}<p class="text-muted small">No prescriptions yet.</p>{% endfor %}
-      <form method="POST" action="{% url 'add_prescription' appointment.pk %}" class="mt-3 border-top pt-3">{% csrf_token %}
-        <div class="row g-2">
-          <div class="col-md-3">{{ prescription_form.medication_name }}</div>
-          <div class="col-md-2">{{ prescription_form.dosage }}</div>
-          <div class="col-md-2">{{ prescription_form.frequency }}</div>
-          <div class="col-md-2">{{ prescription_form.duration }}</div>
-          <div class="col-md-1">{{ prescription_form.quantity }}</div>
-          <div class="col-md-2"><button class="btn btn-warning w-100"><i class="bi bi-plus"></i></button></div>
+      <h6 class="fw-bold text-warning mb-3"><i class="bi bi-capsule me-2"></i>Drug Prescriptions</h6>
+      {% if consultation %}
+        {% if consultation.prescriptions.all %}
+        <div class="mb-3">
+          {% for rx in consultation.prescriptions.all %}
+          <div class="d-flex justify-content-between align-items-center border rounded p-3 mb-2" style="background:#fef9e7;">
+            <div class="flex-grow-1">
+              <div class="fw-semibold text-dark">{{ rx.medication_name }}</div>
+              <div class="text-muted small mt-1">
+                <span class="badge bg-light text-dark me-1">{{ rx.dosage }}</span>
+                <span class="badge bg-light text-dark me-1">{{ rx.frequency }}</span>
+                <span class="badge bg-light text-dark me-1">{{ rx.duration }}</span>
+                <span class="badge bg-light text-dark">Qty: {{ rx.quantity }}</span>
+              </div>
+              {% if rx.instructions %}<div class="text-muted small mt-2"><i class="bi bi-info-circle me-1"></i>{{ rx.instructions }}</div>{% endif %}
+            </div>
+            <div class="text-end ms-2">
+              <span class="badge {% if rx.status == 'pending' %}bg-warning{% elif rx.status == 'dispensed' %}bg-success{% else %}bg-secondary{% endif %} text-dark">
+                {{ rx.get_status_display }}
+              </span>
+              <form method="POST" action="{% url 'delete_prescription' rx.pk %}" style="display:inline;" onsubmit="return confirm('Remove this prescription?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger ms-2"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-        <div class="mt-2">{{ prescription_form.instructions }}</div>
+        {% else %}
+        <p class="text-muted small mb-3">No prescriptions yet.</p>
+        {% endif %}
+        <form method="POST" action="{% url 'add_prescription' appointment.pk %}" class="border-top pt-3">{% csrf_token %}
+          <div class="row g-2">
+            <div class="col-md-3">{{ prescription_form.medication_name }}</div>
+            <div class="col-md-2">{{ prescription_form.dosage }}</div>
+            <div class="col-md-2">{{ prescription_form.frequency }}</div>
+            <div class="col-md-2">{{ prescription_form.duration }}</div>
+            <div class="col-md-1">{{ prescription_form.quantity }}</div>
+            <div class="col-md-2"><button class="btn btn-warning w-100"><i class="bi bi-plus me-1"></i>Add</button></div>
+          </div>
+          <div class="mt-2">{{ prescription_form.instructions }}</div>
+        </form>
+      {% else %}
+      <div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i><strong>Save consultation notes</strong> to add drug prescriptions.</div>
+      {% endif %}
+    </div>
+
+    <!-- Complete Consultation -->
+    <form method="POST" action="{% url 'complete_consultation' appointment.pk %}">{% csrf_token %}
+      <button class="btn btn-success btn-lg w-100 mb-4"><i class="bi bi-check-circle me-2"></i>Complete & Discharge Patient</button>
+    </form>
+
+    <!-- Send Patient To Next Department -->
+    <div class="stat-card mb-4 border-2 border-primary">
+      <h6 class="fw-bold text-primary mb-3">
+        <i class="bi bi-arrow-right-circle me-2"></i>Send Patient To Next Department
+      </h6>
+      <div class="alert alert-info mb-3">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong>Important:</strong> All patients must go through <strong>Billing/Cashier</strong> before being discharged.
+      </div>
+      <form method="POST" action="{% url 'update_next_step' appointment.pk %}">{% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold">Select Department</label>
+            <select name="next_step" class="form-select form-select-lg" required>
+              <option value="">— Choose Department —</option>
+              <optgroup label="Clinical Departments">
+                <option value="lab">🧪 Laboratory (Lab Tests)</option>
+                <option value="pharmacy">💊 Pharmacy (Get Medications)</option>
+                <option value="ward">🏥 Ward (Admit to Hospital)</option>
+                <option value="physiotherapy">🦾 Physiotherapy</option>
+                <option value="nutrition">🥗 Nutrition / Dietitian</option>
+              </optgroup>
+              <optgroup label="Specialist Referrals">
+                <option value="doctor">👨‍⚕️ Back to Another Doctor</option>
+                <option value="dental">🦷 Dental Clinic</option>
+                <option value="optical">👁️ Optical / Eye Clinic</option>
+              </optgroup>
+              <optgroup label="Discharge Options">
+                <option value="cashier">💰 Billing & Cashier (Payment)</option>
+                <option value="follow_up">📅 Follow-up Appointment</option>
+                <option value="discharged">🏠 Discharge Home</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              <i class="bi bi-arrow-right-circle me-2"></i>Send Patient
+            </button>
+          </div>
+        </div>
       </form>
     </div>
-    {% else %}<div class="alert alert-info">Save consultation notes first to unlock lab orders and prescriptions.</div>{% endif %}
-    <form method="POST" action="{% url 'complete_consultation' appointment.pk %}">{% csrf_token %}
-      <button class="btn btn-success btn-lg w-100"><i class="bi bi-check-circle me-2"></i>Complete & Discharge Patient</button>
-    </form>
   </div>
+
+  <!-- Right Sidebar -->
   <div class="col-md-4">
     <div class="stat-card mb-4">
       <h6 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-primary"></i>Visit History</h6>
@@ -103,71 +201,28 @@
       </div>
       {% empty %}<p class="text-muted small">No previous visits.</p>{% endfor %}
     </div>
+
     <div class="stat-card mb-4">
       <h6 class="fw-bold mb-3"><i class="bi bi-eyedropper me-2 text-success"></i>Past Labs</h6>
       {% for lab in past_labs %}
       <div class="border rounded p-2 mb-2 small">
         <div class="fw-semibold">{{ lab.test_name }}</div>
         <div class="text-muted">{{ lab.ordered_at|date:"d M Y" }}</div>
+        <span class="badge bg-light text-dark mt-1">{{ lab.get_status_display }}</span>
       </div>
       {% empty %}<p class="text-muted small">No lab history.</p>{% endfor %}
     </div>
+
     <div class="stat-card">
       <h6 class="fw-bold mb-3"><i class="bi bi-capsule me-2 text-warning"></i>Past Medications</h6>
       {% for rx in past_prescriptions %}
       <div class="border rounded p-2 mb-2 small">
         <div class="fw-semibold">{{ rx.medication_name }}</div>
         <div class="text-muted">{{ rx.dosage }} — {{ rx.prescribed_at|date:"d M Y" }}</div>
+        <span class="badge bg-light text-dark mt-1">{{ rx.get_status_display }}</span>
       </div>
       {% empty %}<p class="text-muted small">No medication history.</p>{% endfor %}
     </div>
   </div>
 </div>
-{# ---- end of right column ---- #}
-  </div>  {# end row #}
-</div>    {# end outer div #}
-
-{# Send Patient To Next Department — MOVED INSIDE block content #}
-<div class="stat-card mb-4">
-  <h6 class="fw-bold mb-3">
-    <i class="bi bi-arrow-right-circle me-2 text-primary"></i>Send Patient To Next Department
-  </h6>
-  <p class="text-muted small mb-3">
-    <i class="bi bi-info-circle me-1"></i>
-    All patients must go through <strong>Billing/Cashier</strong> before being discharged.
-  </p>
-  <form method="POST" action="{% url 'update_next_step' appointment.pk %}">{% csrf_token %}
-    <div class="row g-3">
-      <div class="col-md-5">
-        <label class="form-label fw-semibold">Send to Department</label>
-        <select name="next_step" class="form-select" required>
-          <option value="">— Select Department —</option>
-          <optgroup label="Clinical Departments">
-            <option value="lab">🧪 Laboratory</option>
-            <option value="pharmacy">💊 Pharmacy</option>
-            <option value="ward">🏥 Ward (Admit Patient)</option>
-            <option value="physiotherapy">🦾 Physiotherapy</option>
-            <option value="nutrition">🥗 Nutrition / Dietitian</option>
-          </optgroup>
-          <optgroup label="Specialist Referrals">
-            <option value="doctor">👨‍⚕️ Back to Doctor</option>
-            <option value="dental">🦷 Dental</option>
-            <option value="optical">👁️ Optical / Eye Clinic</option>
-          </optgroup>
-          <optgroup label="Discharge">
-            <option value="cashier">💰 Billing & Cashier</option>
-            <option value="follow_up">📅 Follow-up Appointment</option>
-            <option value="discharged">🏠 Discharge Home</option>
-          </optgroup>
-        </select>
-      </div>
-      <div class="col-md-3 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary w-100">
-          <i class="bi bi-arrow-right-circle me-2"></i>Send Patient
-        </button>
-      </div>
-    </div>
-  </form>
-</div>
-
-{% endblock %}  {# only ONE endblock at the very end #}
+{% endblock %}

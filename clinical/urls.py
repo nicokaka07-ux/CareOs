@@ -10,4 +10,6 @@ urlpatterns = [
     path('emr/<int:appointment_pk>/lab/',       views.add_lab_order,         name='add_lab_order'),
     path('emr/<int:appointment_pk>/prescribe/', views.add_prescription,      name='add_prescription'),
     path('emr/<int:appointment_pk>/complete/',  views.complete_consultation, name='complete_consultation'),
+path('lab-order/<int:pk>/delete/', views.delete_lab_order, name='delete_lab_order'),
+path('prescription/<int:pk>/delete/', views.delete_prescription, name='delete_prescription'),
 ]

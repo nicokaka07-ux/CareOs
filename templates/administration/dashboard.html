@@ -8,8 +8,6 @@
   <a href="{% url 'audit_log_list' %}"   class="nav-link"><i class="bi bi-shield-check"></i> Audit Logs</a>
   <a href="{% url 'patient_list' %}"     class="nav-link"><i class="bi bi-person-lines-fill"></i> Patients</a>
   <a href="{% url 'drug_inventory' %}"   class="nav-link"><i class="bi bi-box-seam"></i> Inventory</a>
-  <div class="nav-section">System</div>
-  <a href="/admin/"                      class="nav-link"><i class="bi bi-gear"></i> Django Admin</a>
 {% endblock %}
 {% block content %}
 {% if low_stock_drugs or expiring_drugs %}

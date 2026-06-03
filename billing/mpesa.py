@@ -1,138 +1,291 @@
-import requests, base64, logging
+import base64
+import logging
+import requests
+
 from datetime import datetime
 from decouple import config
 
 logger = logging.getLogger(__name__)
 
-def get_mpesa_token():
-    """Get M-Pesa OAuth token"""
-    is_production = config('MPESA_ENVIRONMENT', default='sandbox') == 'production'
-    base_url = 'https://api.safaricom.co.ke' if is_production else 'https://sandbox.safaricom.co.ke'
-    url = f"{base_url}/oauth/v1/generate?grant_type=client_credentials"
-    
-    try:
-        r = requests.get(url, auth=(config('MPESA_CONSUMER_KEY',''), config('MPESA_CONSUMER_SECRET','')), timeout=10)
-        r.raise_for_status()
-        return r.json().get('access_token','')
-    except Exception as e:
-        logger.error(f"Failed to get M-Pesa token: {e}")
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _base_url() -> str:
+    env = str(config('MPESA_ENVIRONMENT', default='sandbox', cast=str)).strip().lower()
+    return (
+        'https://api.safaricom.co.ke'
+        if env == 'production'
+        else 'https://sandbox.safaricom.co.ke'
+    )
+
+
+def get_mpesa_token() -> str | None:
+    """
+    Fetch a short-lived OAuth 2.0 bearer token from Daraja.
+
+    Returns the access_token string on success, or None on failure.
+    Each token is valid for ~1 hour; for a demo / low-traffic app
+    fetching a fresh token per request is fine.  If you need caching,
+    store the token + expiry in Django's cache backend.
+    """
+    url = f"{_base_url()}/oauth/v1/generate?grant_type=client_credentials"
+    consumer_key    = config('MPESA_CONSUMER_KEY', default='', cast=str)
+    consumer_secret = config('MPESA_CONSUMER_SECRET', default='', cast=str)
+    if not isinstance(consumer_key, str) or not isinstance(consumer_secret, str):
+        logger.error("MPESA_CONSUMER_KEY or MPESA_CONSUMER_SECRET is not set in .env")
         return None
 
-def generate_password():
-    """Generate M-Pesa password and timestamp"""
-    shortcode = config('MPESA_SHORTCODE','174379')
-    passkey   = config('MPESA_PASSKEY','')
+    consumer_key = consumer_key.strip()
+    consumer_secret = consumer_secret.strip()
+
+    if not consumer_key or not consumer_secret:
+        logger.error("MPESA_CONSUMER_KEY or MPESA_CONSUMER_SECRET is not set in .env")
+        return None
+
+    auth = (consumer_key, consumer_secret)
+    try:
+        response = requests.get(
+            url,
+            auth=auth,
+            timeout=15,
+        )
+        response.raise_for_status()
+        token = response.json().get('access_token', '')
+        if not token:
+            logger.error("Daraja returned no access_token. Full response: %s", response.text)
+            return None
+        logger.debug("M-Pesa OAuth token acquired successfully.")
+        return token
+
+    except requests.exceptions.HTTPError as e:
+        logger.error(
+            "HTTP %s when fetching M-Pesa token: %s",
+            e.response.status_code if e.response is not None else '?',
+            e.response.text if e.response is not None else str(e),
+        )
+    except requests.exceptions.Timeout:
+        logger.error("Timeout fetching M-Pesa OAuth token (>15 s).")
+    except requests.exceptions.RequestException as e:
+        logger.error("Network error fetching M-Pesa token: %s", e)
+    except Exception as e:
+        logger.error("Unexpected error fetching M-Pesa token: %s", e)
+
+    return None
+
+
+def _generate_password() -> tuple[str, str]:
+    """
+    Generate the Daraja STK-push password and the matching timestamp.
+
+    password  = base64( shortcode + passkey + timestamp )
+    timestamp = YYYYMMDDHHmmss  (local server time)
+
+    Returns (password, timestamp).
+    """
+    shortcode = config('MPESA_SHORTCODE', default='174379', cast=str)
+    passkey   = config('MPESA_PASSKEY',   default='', cast=str)
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     raw       = f"{shortcode}{passkey}{timestamp}"
-    return base64.b64encode(raw.encode()).decode(), timestamp
+    password  = base64.b64encode(raw.encode()).decode()
+    return password, timestamp
 
-def validate_phone_number(phone_number):
-    """Validate and format phone number to 254XXXXXXXXXX format"""
+
+def validate_phone_number(phone_number: str) -> str | None:
+    """
+    Normalise any common Kenyan phone format to 254XXXXXXXXX (12 digits).
+
+    Accepted inputs:  07XXXXXXXX  |  7XXXXXXXX  |  2547XXXXXXXX  |  +2547XXXXXXXX
+    Returns the normalised string, or None if the number is invalid.
+    """
     phone = phone_number.strip()
-    
-    # Remove + if present
-    if phone.startswith('+'): 
+
+    # Strip leading +
+    if phone.startswith('+'):
         phone = phone[1:]
-    
-    # Convert 0 to 254
-    if phone.startswith('0'): 
+
+    # 0XXXXXXXXX  →  254XXXXXXXXX
+    if phone.startswith('0'):
         phone = '254' + phone[1:]
-    
-    # Add 254 if not present
+
+    # 7XXXXXXXXX (9 digits, no country code)
     if not phone.startswith('254'):
         phone = '254' + phone
-    
-    # Validate format: 254 + 9 digit mobile number = 12 characters total
-    if not phone.startswith('254') or len(phone) != 12:
+
+    # Final validation: must be exactly 12 digits and start with 2547
+    if len(phone) != 12 or not phone.startswith('2547'):
+        logger.warning("Phone number failed validation: %s", phone_number)
         return None
-    
+
     return phone
 
 
 def is_valid_callback(callback_url: str) -> bool:
-    """Ensure the callback URL is a public HTTPS URL (Daraja rejects localhost/http)."""
+    """
+    Daraja requires a publicly reachable HTTPS URL.
+    Reject localhost, 127.0.0.1, and plain HTTP.
+    """
     if not callback_url:
         return False
-    cb = callback_url.strip()
-    # must be https and not localhost or 127.0.0.1
-    if not cb.lower().startswith('https://'):
+    cb = callback_url.strip().lower()
+    if not cb.startswith('https://'):
         return False
     if 'localhost' in cb or '127.0.0.1' in cb:
         return False
     return True
 
-def stk_push(phone_number, amount, invoice_number):
-    """Initiate M-Pesa STK push"""
-    # Validate and format phone number
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main entry-point
+# ─────────────────────────────────────────────────────────────────────────────
+
+def stk_push(phone_number: str, amount: float, invoice_number: str) -> dict:
+    """
+    Initiate a Lipa Na M-Pesa Online (STK Push) request.
+
+    Parameters
+    ----------
+    phone_number    : Patient's phone in any supported format (see validate_phone_number).
+    amount          : Amount to charge in KES (will be rounded to nearest integer).
+    invoice_number  : Used as the AccountReference visible to the payer.
+
+    Returns
+    -------
+    dict  – On success the dict contains at minimum:
+                ResponseCode        '0'
+                CheckoutRequestID   '<uuid>'
+                MerchantRequestID   '<uuid>'
+                CustomerMessage     'Success. ...'
+            On failure it always contains:
+                ResponseCode        non-'0' string
+                errorMessage        human-readable reason
+    """
+
+    # ── 1. Validate phone ────────────────────────────────────────────────────
     phone = validate_phone_number(phone_number)
     if not phone:
         return {
             'ResponseCode': '1',
-            'errorMessage': 'Invalid phone number format. Use format: 07XXXXXXXX or 254XXXXXXXXX'
+            'errorMessage': (
+                f"Invalid phone number '{phone_number}'. "
+                "Use format 07XXXXXXXX, 7XXXXXXXX, or 2547XXXXXXXX."
+            ),
         }
-    
-    # Validate callback URL before calling M-Pesa
-    callback = config('MPESA_CALLBACK_URL','https://careos.com/billing/mpesa/callback/')
+
+    # ── 2. Validate callback URL ─────────────────────────────────────────────
+    callback = config(
+        'MPESA_CALLBACK_URL',
+        default='https://example.com/billing/mpesa/callback/',
+        cast=str,
+    )
+    if not isinstance(callback, str):
+        callback = str(callback)
     if not is_valid_callback(callback):
         msg = (
-            'Invalid MPESA_CALLBACK_URL. Daraja requires a public HTTPS callback URL. '
-            'For local testing, expose your app with a tunnel (e.g. ngrok) and set '
-            'MPESA_CALLBACK_URL to https://<your-subdomain>.ngrok.io/billing/mpesa/callback/'
+            "MPESA_CALLBACK_URL is not a valid public HTTPS URL. "
+            "Daraja requires a publicly reachable HTTPS endpoint. "
+            "For local testing run ngrok and set MPESA_CALLBACK_URL to "
+            "https://<subdomain>.ngrok-free.app/billing/mpesa/callback/"
         )
         logger.error(msg)
         return {'ResponseCode': '1', 'errorMessage': msg}
 
-    # Get token
+    # ── 3. Acquire OAuth token ───────────────────────────────────────────────
     token = get_mpesa_token()
     if not token:
         return {
             'ResponseCode': '1',
-            'errorMessage': 'Failed to authenticate with M-Pesa. Check your credentials.'
+            'errorMessage': (
+                "Could not authenticate with M-Pesa. "
+                "Check MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET in .env, "
+                "and ensure your Daraja app has the Lipa Na M-Pesa API subscribed."
+            ),
         }
-    
-    password, timestamp = generate_password()
-    shortcode = config('MPESA_SHORTCODE','174379')
-    is_production = config('MPESA_ENVIRONMENT', default='sandbox') == 'production'
-    
-    headers = {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+
+    # ── 4. Build payload ─────────────────────────────────────────────────────
+    shortcode        = config('MPESA_SHORTCODE', default='174379', cast=str)
+    password, timestamp = _generate_password()
+    int_amount       = max(1, int(round(amount)))   # Daraja minimum is KES 1
+
     payload = {
-        'BusinessShortCode': shortcode, 
-        'Password': password, 
-        'Timestamp': timestamp,
-        'TransactionType': 'CustomerPayBillOnline', 
-        'Amount': int(amount),
-        'PartyA': phone, 
-        'PartyB': shortcode, 
-        'PhoneNumber': phone,
-        'CallBackURL': callback, 
-        'AccountReference': invoice_number,
-        'TransactionDesc': f'Payment for {invoice_number}',
+        'BusinessShortCode': shortcode,
+        'Password':          password,
+        'Timestamp':         timestamp,
+        'TransactionType':   'CustomerPayBillOnline',
+        'Amount':            int_amount,
+        'PartyA':            phone,
+        'PartyB':            shortcode,
+        'PhoneNumber':       phone,
+        'CallBackURL':       callback,
+        'AccountReference':  invoice_number[:12],   # Daraja limit: 12 chars
+        'TransactionDesc':   f"Payment {invoice_number}"[:13],  # Daraja limit: 13 chars
     }
-    
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type':  'application/json',
+    }
+
+    # ── 5. Call Daraja ───────────────────────────────────────────────────────
+    url = f"{_base_url()}/mpesa/stkpush/v1/processrequest"
+    logger.info(
+        "STK Push → phone=%s  amount=%s  invoice=%s  callback=%s",
+        phone, int_amount, invoice_number, callback,
+    )
+
     try:
-        base_url = 'https://api.safaricom.co.ke' if is_production else 'https://sandbox.safaricom.co.ke'
-        url = f"{base_url}/mpesa/stkpush/v1/processrequest"
-        
-        logger.info(f"STK Push attempt - Phone: {phone}, Amount: {amount}, Invoice: {invoice_number}")
-        r = requests.post(url, json=payload, headers=headers, timeout=10)
-        r.raise_for_status()
-        
-        result = r.json()
-        logger.info(f"STK Push response: {result}")
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+
+        # Log raw Daraja response regardless of status code
+        logger.info("Daraja HTTP %s: %s", response.status_code, response.text)
+
+        # Daraja returns 200 even for business-logic errors (wrong passkey, etc.)
+        # so we parse the body rather than relying on raise_for_status alone.
+        try:
+            result = response.json()
+        except ValueError:
+            return {
+                'ResponseCode': '1',
+                'errorMessage': f"Non-JSON response from Daraja (HTTP {response.status_code}): {response.text[:300]}",
+            }
+
+        # HTTP-level error (e.g. 400 Bad Request from Daraja)
+        if not response.ok:
+            error_msg = (
+                result.get('errorMessage')
+                or result.get('ResultDesc')
+                or result.get('error_description')
+                or response.text[:300]
+            )
+            logger.error("Daraja error (HTTP %s): %s", response.status_code, error_msg)
+            result.setdefault('ResponseCode', str(response.status_code))
+            result.setdefault('errorMessage', error_msg)
+            return result
+
         return result
+
     except requests.exceptions.Timeout:
-        error_msg = "M-Pesa request timed out. Please try again."
-        logger.error(error_msg)
-        return {'ResponseCode': '1', 'errorMessage': error_msg}
+        msg = "M-Pesa STK push request timed out (>15 s). Please try again."
+        logger.error(msg)
+        return {'ResponseCode': '1', 'errorMessage': msg}
+
+    except requests.exceptions.ConnectionError as e:
+        msg = f"Could not reach Safaricom servers: {e}"
+        logger.error(msg)
+        return {'ResponseCode': '1', 'errorMessage': msg}
+
     except requests.exceptions.RequestException as e:
-        error_msg = f"M-Pesa request failed: {str(e)}"
-        logger.error(error_msg)
+        # Capture the Daraja response body when available
         if hasattr(e, 'response') and e.response is not None:
             try:
                 return e.response.json()
             except Exception:
-                return {'ResponseCode': '1', 'errorMessage': e.response.text or error_msg}
+                return {'ResponseCode': '1', 'errorMessage': e.response.text or str(e)}
+        msg = f"Unexpected request error: {e}"
+        logger.error(msg)
+        return {'ResponseCode': '1', 'errorMessage': msg}
+
     except Exception as e:
-        error_msg = f"Unexpected error: {str(e)}"
-        logger.error(error_msg)
-        return {'ResponseCode': '1', 'errorMessage': error_msg}
+        msg = f"Unexpected error during STK push: {e}"
+        logger.error(msg, exc_info=True)
+        return {'ResponseCode': '1', 'errorMessage': msg}
