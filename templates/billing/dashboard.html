@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}Billing{% endblock %}
 {% block page_title %}Billing & Cashier Desk{% endblock %}
+
 {% block sidebar_links %}
   <div class="nav-section">Billing</div>
   <a href="{% url 'billing_dashboard' %}" class="nav-link active"><i class="bi bi-receipt"></i> Dashboard</a>
   <a href="{% url 'create_invoice' %}"    class="nav-link"><i class="bi bi-plus-circle"></i> New Invoice</a>
 {% endblock %}
+
 {% block content %}
 <div class="row g-3 mb-4">
   <div class="col-md-4"><div class="stat-card"><div class="text-muted small">Today's Revenue</div><div class="fs-2 fw-bold text-success">KES {{ total_revenue|floatformat:2 }}</div></div></div>
@@ -13,9 +15,9 @@
   <div class="col-md-4"><div class="stat-card"><div class="text-muted small">Unpaid Invoices</div><div class="fs-2 fw-bold text-danger">{{ unpaid_count }}</div></div></div>
 </div>
 
-<div class="stat-card mb-4 bg-light">
+<div class="stat-card mb-4 bg-light p-3 rounded shadow-sm">
   <h6 class="fw-bold mb-3"><i class="bi bi-search me-2"></i>Search Patient & View Charges</h6>
-  <form method="GET" class="row g-2">
+  <form method="GET" action="{% url 'billing_dashboard' %}" class="row g-2">
     <div class="col-md-8">
       <input type="text" name="q" class="form-control" placeholder="Search by Patient ID, First Name, or Last Name..." value="{{ patient_query }}" />
     </div>
@@ -26,177 +28,100 @@
 </div>
 
 {% if patient_charges %}
-<div class="stat-card mb-4 border border-success">
-  <div class="row mb-3">
-    <div class="col">
-      <h6 class="fw-bold text-success mb-2">Patient Charges Summary</h6>
-      <div class="row g-2">
-        <div class="col-auto">
-          <div class="text-muted small">Patient ID</div>
-          <div class="fw-bold">{{ patient_charges.patient.patient_id }}</div>
-        </div>
-        <div class="col-auto">
-          <div class="text-muted small">Name</div>
-          <div class="fw-bold">{{ patient_charges.patient.get_full_name }}</div>
-        </div>
-        <div class="col-auto">
-          <div class="text-muted small">Phone</div>
-          <div class="fw-bold">{{ patient_charges.patient.phone }}</div>
+<div class="card mb-4 border-success shadow-sm">
+  <div class="card-header bg-success text-white p-3">
+    <div class="row align-items-center">
+      <div class="col">
+        <h5 class="fw-bold mb-1"><i class="bi bi-person-check-fill me-2"></i>Patient Charges Summary</h5>
+        <div class="d-flex gap-3 small opacity-75">
+          <span><strong>ID:</strong> {{ patient_charges.patient.patient_id }}</span>
+          <span><strong>Name:</strong> {{ patient_charges.patient.get_full_name }}</span>
+          <span><strong>Phone:</strong> {{ patient_charges.patient.phone|default:"—" }}</span>
         </div>
       </div>
-    </div>
-    <div class="col-auto">
-      <div class="text-end">
-        <div class="text-muted small">Grand Total</div>
-        <div class="fs-2 fw-bold text-success">KES {{ patient_charges.grand_total|floatformat:2 }}</div>
+      <div class="col-auto text-end">
+        <span class="small d-block text-uppercase opacity-75">Grand Total</span>
+        <span class="fs-3 fw-bold">KES {{ patient_charges.grand_total|floatformat:2 }}</span>
       </div>
     </div>
   </div>
   
-  <div class="row g-3">
-    <div class="col-md-3">
-      <div class="bg-white rounded p-3 border-start border-4 border-primary">
-        <div class="text-muted small"><i class="bi bi-stethoscope me-1"></i>Consultation</div>
-        <div class="fs-4 fw-bold text-primary">KES {{ patient_charges.consultation_total|floatformat:2 }}</div>
-        <small class="text-muted">{% if patient_charges.consultations %}{{ patient_charges.consultations|length }} visit(s){% else %}No visits{% endif %}</small>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="bg-white rounded p-3 border-start border-4 border-success">
-        <div class="text-muted small"><i class="bi bi-eyedropper me-1"></i>Laboratory</div>
-        <div class="fs-4 fw-bold text-success">KES {{ patient_charges.lab_fee_total|floatformat:2 }}</div>
-        <small class="text-muted">{{ patient_charges.total_labs }} test(s) ordered</small>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="bg-white rounded p-3 border-start border-4 border-warning">
-        <div class="text-muted small"><i class="bi bi-capsule me-1"></i>Pharmacy</div>
-        <div class="fs-4 fw-bold text-warning">KES {{ patient_charges.pharmacy_fee_total|floatformat:2 }}</div>
-        <small class="text-muted">{{ patient_charges.total_prescriptions }} medication(s)</small>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="bg-white rounded p-3 border-start border-4 border-danger">
-        <div class="text-muted small"><i class="bi bi-receipt me-1"></i>Total Amount</div>
-        <div class="fs-4 fw-bold text-danger">KES {{ patient_charges.grand_total|floatformat:2 }}</div>
-        <a href="{% url 'create_invoice' %}?patient={{ patient_charges.patient.pk }}" class="btn btn-sm btn-danger mt-2">Create Invoice</a>
-      </div>
-    </div>
-  </div>
-  
-  {% if patient_charges.labs %}
-  <div class="mt-3 pt-3 border-top">
-    <h6 class="fw-bold mb-2"><i class="bi bi-eyedropper me-1 text-success"></i>Lab Orders Ordered</h6>
-    <div class="row g-2">
-      {% for lab in patient_charges.labs %}
-      <div class="col-md-6">
-        <div class="bg-light rounded p-2 small">
-          <div class="fw-semibold">{{ lab.test_name }}</div>
-          <div class="text-muted">{{ lab.get_status_display }}</div>
+  <div class="card-body bg-light p-3">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="bg-white rounded p-3 border-start border-4 border-primary h-100 shadow-sm">
+          <div class="text-muted small mb-1"><i class="bi bi-stethoscope me-1 text-primary"></i>Consultation Fee</div>
+          <div class="fs-4 fw-bold text-dark">KES {{ patient_charges.consultation_total|floatformat:2 }}</div>
+          <small class="text-muted">Standard Visit Base Rate</small>
         </div>
       </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-  
-  {% if patient_charges.prescriptions %}
-  <div class="mt-3 pt-3 border-top">
-    <h6 class="fw-bold mb-2"><i class="bi bi-capsule me-1 text-warning"></i>Medications Prescribed</h6>
-    <div class="row g-2">
-      {% for rx in patient_charges.prescriptions %}
-      <div class="col-md-6">
-        <div class="bg-light rounded p-2 small">
-          <div class="fw-semibold">{{ rx.medication_name }}</div>
-          <div class="text-muted">{{ rx.dosage }} | {{ rx.frequency }} | {{ rx.duration }}</div>
+      
+      <div class="col-md-4">
+        <div class="bg-white rounded p-3 border-start border-4 border-info h-100 shadow-sm">
+          <div class="text-muted small mb-1"><i class="bi bi-eyedropper me-1 text-info"></i>Laboratory Aggregate</div>
+          <div class="fs-4 fw-bold text-dark">KES {{ patient_charges.lab_fee_total|floatformat:2 }}</div>
+          <small class="text-muted">{{ patient_charges.total_labs }} active request record(s)</small>
         </div>
       </div>
-      {% endfor %}
+      
+      <div class="col-md-4">
+        <div class="bg-white rounded p-3 border-start border-4 border-warning h-100 shadow-sm">
+          <div class="text-muted small mb-1"><i class="bi bi-capsule me-1 text-warning"></i>Pharmacy Medication</div>
+          <div class="fs-4 fw-bold text-dark">KES {{ patient_charges.pharmacy_fee_total|floatformat:2 }}</div>
+          <small class="text-muted">{{ patient_charges.total_prescriptions }} items allocated</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+      <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Confirm service details above before compiling invoice entry.</span>
+      
+      <a href="{% url 'create_invoice' %}?patient={{ patient_charges.patient.pk }}{% if patient_charges.today_appointment %}&appointment={{ patient_charges.today_appointment.pk }}{% endif %}" class="btn btn-success px-4 fw-bold shadow-sm">
+        <i class="bi bi-lightning-charge-fill me-1"></i> Compile Automated Invoice
+      </a>
     </div>
   </div>
-  {% endif %}
 </div>
 {% endif %}
 
-<div class="d-flex justify-content-between mb-3">
-  <h6 class="fw-bold">Today's Invoices</h6>
+<div class="d-flex justify-content-between mb-3 align-items-center">
+  <h6 class="fw-bold m-0">Today's Invoices</h6>
   <a href="{% url 'create_invoice' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>New Invoice</a>
 </div>
-<div class="stat-card mb-4">
+
+<div class="stat-card mb-4 p-0 overflow-hidden shadow-sm">
   <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+      </thead>
       <tbody>
         {% for inv in invoices %}
         <tr>
           <td><code>{{ inv.invoice_number }}</code></td>
           <td>{{ inv.patient.get_full_name }}<br/><small class="text-muted">{{ inv.patient.patient_id }}</small></td>
-          <td>KES {{ inv.total|floatformat:2 }}</td>
+          <td class="fw-bold text-dark">KES {{ inv.total|floatformat:2 }}</td>
           <td class="text-success">KES {{ inv.amount_paid|floatformat:2 }}</td>
           <td class="{% if inv.balance > 0 %}text-danger fw-bold{% endif %}">KES {{ inv.balance|floatformat:2 }}</td>
-          <td>{% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>{% elif inv.status == 'partial' %}<span class="badge bg-warning text-dark">Partial</span>{% else %}<span class="badge bg-danger">Unpaid</span>{% endif %}</td>
+          <td>
+            {% if inv.status == 'paid' %}
+              <span class="badge bg-success">Paid</span>
+            {% elif inv.status == 'partial' %}
+              <span class="badge bg-warning text-dark">Partial</span>
+            {% else %}
+              <span class="badge bg-danger">Unpaid</span>
+            {% endif %}
+          </td>
           <td>
             <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-            {% if inv.status != 'paid' %}<a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>{% endif %}
+            {% if inv.status != 'paid' %}
+              <a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>
+            {% endif %}
           </td>
         </tr>
-        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No invoices today.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="d-flex justify-content-between mb-3">
-  <h6 class="fw-bold">Unpaid Invoices</h6>
-  <span class="text-muted small">Older invoices that still need payment</span>
-</div>
-<div class="stat-card mb-4">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for inv in unpaid_invoices %}
-        <tr>
-          <td><code>{{ inv.invoice_number }}</code></td>
-          <td>{{ inv.patient.get_full_name }}<br/><small class="text-muted">{{ inv.patient.patient_id }}</small></td>
-          <td>KES {{ inv.total|floatformat:2 }}</td>
-          <td class="text-success">KES {{ inv.amount_paid|floatformat:2 }}</td>
-          <td class="{% if inv.balance > 0 %}text-danger fw-bold{% endif %}">KES {{ inv.balance|floatformat:2 }}</td>
-          <td><span class="badge bg-danger">Unpaid</span></td>
-          <td>
-            <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-            <a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>
-          </td>
-        </tr>
-        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No unpaid invoices found.</td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="d-flex justify-content-between mb-3">
-  <h6 class="fw-bold">All Invoices</h6>
-  <span class="text-muted small">Recent invoices across all payment statuses</span>
-</div>
-<div class="stat-card">
-  <div class="table-responsive">
-    <table class="table table-hover align-middle">
-      <thead class="table-light"><tr><th>Invoice #</th><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for inv in all_invoices %}
-        <tr>
-          <td><code>{{ inv.invoice_number }}</code></td>
-          <td>{{ inv.patient.get_full_name }}<br/><small class="text-muted">{{ inv.patient.patient_id }}</small></td>
-          <td>KES {{ inv.total|floatformat:2 }}</td>
-          <td class="text-success">KES {{ inv.amount_paid|floatformat:2 }}</td>
-          <td class="{% if inv.balance > 0 %}text-danger fw-bold{% endif %}">KES {{ inv.balance|floatformat:2 }}</td>
-          <td>{% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>{% elif inv.status == 'partial' %}<span class="badge bg-warning text-dark">Partial</span>{% else %}<span class="badge bg-danger">Unpaid</span>{% endif %}</td>
-          <td>
-            <a href="{% url 'invoice_detail' inv.pk %}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-eye"></i></a>
-            {% if inv.status != 'paid' %}<a href="{% url 'record_payment' inv.pk %}" class="btn btn-sm btn-success"><i class="bi bi-cash-coin"></i></a>{% endif %}
-          </td>
-        </tr>
-        {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No invoices found.</td></tr>{% endfor %}
+        {% empty %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No invoices issued today.</td></tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>

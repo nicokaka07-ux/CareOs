@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h3>Receipt {{ receipt.receipt_number }}</h3>
+  <p>Generated at: {{ receipt.generated_at }}</p>
+  <div class="card">
+    <div class="card-body">
+      {{ receipt.content_html|safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}

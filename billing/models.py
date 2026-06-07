@@ -296,3 +296,37 @@ class MpesaTransaction(models.Model):
 
     class Meta:
         ordering = ['-initiated_at']
+
+
+class Receipt(models.Model):
+    receipt_number = models.CharField(max_length=30, unique=True, editable=False)
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.CASCADE,
+        related_name='receipts'
+    )
+
+    content_html = models.TextField(blank=True)
+    pdf_file = models.FileField(upload_to='receipts/', blank=True, null=True)
+
+    generated_by = models.ForeignKey(
+        'accounts.StaffUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if not self.receipt_number:
+            today = timezone.now()
+            count = Receipt.objects.count() + 1
+            self.receipt_number = f"RCT-{today.strftime('%Y%m%d')}-{count:06d}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.receipt_number} — {self.invoice.invoice_number}"
+
+    class Meta:
+        ordering = ['-generated_at']

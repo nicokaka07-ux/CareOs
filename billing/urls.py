@@ -11,4 +11,7 @@ urlpatterns = [
  path('mpesa/status/<str:checkout_request_id>/', views.mpesa_payment_status, name='mpesa_payment_status'), 
 path('mpesa/waiting/<str:checkout_request_id>/', views.mpesa_waiting, name='mpesa_waiting'),  
 path('invoice/<int:pk>/print/', views.invoice_print, name='invoice_print'),
+    path('invoice/<int:pk>/receipt/generate/', views.generate_receipt, name='generate_receipt'),
+    path('receipt/<int:pk>/', views.view_receipt, name='view_receipt'),
+    path('receipt/<int:pk>/pdf/', views.download_receipt_pdf, name='download_receipt_pdf'),
 ]
