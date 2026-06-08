@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt - {{ invoice.invoice_number }}</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 30px; }
+        .receipt-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+        .hospital-name { font-size: 24px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .receipt-title { font-size: 16px; margin-top: 5px; color: #555; }
+        .meta-table, .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .meta-table td { padding: 4px 0; vertical-align: top; }
+        .items-table th { background-color: #f2f2f2; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 10px; text-align: left; }
+        .items-table td { padding: 10px; border-bottom: 1px solid #eee; }
+        .text-end { text-align: right; }
+        .total-row { font-weight: bold; font-size: 16px; background-color: #f9f9f9; }
+        .footer-note { text-align: center; margin-top: 5px; font-size: 12px; color: #777; border-top: 1px dashed #ccc; padding-top: 15px; }
+        /* Hide buttons during actual physical printing */
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="background: #f4f6f9; padding: 12px; margin-bottom: 25px; border-radius: 6px; display: flex; justify-content: space-between;">
+        <button onclick="window.history.back();" style="padding: 8px 14px; cursor: pointer;">← Back to Invoice</button>
+        <button onclick="window.print();" style="padding: 8px 18px; background: #00a651; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 4px;">🖨️ Print / Save PDF</button>
+    </div>
+
+    <div class="receipt-header">
+        <div class="hospital-name">🏥 CAREOS MEDICAL CENTER</div>
+        <div style="font-size: 13px; color: #666;">P.O. Box 1234 - Nakuru, Kenya | Tel: +254 711 223344</div>
+        <div class="receipt-title"><strong>OFFICIAL CASH RECEIPT</strong></div>
+    </div>
+
+    <table class="meta-table">
+        <tr>
+            <td style="width: 50%;">
+                <strong>Patient Name:</strong> {{ invoice.patient.get_full_name }}<br>
+                <strong>Patient ID:</strong> {{ invoice.patient.patient_id }}<br>
+                <strong>Phone:</strong> {{ invoice.patient.phone }}
+            </td>
+            <td style="width: 50%; text-align: right;">
+                <strong>Receipt No:</strong> REC-{{ invoice.invoice_number }}<br>
+                <strong>Date:</strong> {{ invoice.created_at|date:"d M Y H:i" }}<br>
+                <strong>Payment Status:</strong> <span style="color: green; font-weight: bold;">PAID</span>
+            </td>
+        </tr>
+    </table>
+
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th class="text-end">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Consultation Fee</td><td class="text-end">KES 500.00</td></tr>
+            <tr><td>Laboratory Fee</td><td class="text-end">KES 300.00</td></tr>
+            <tr><td>Pharmacy Fee</td><td class="text-end">KES 150.00</td></tr>
+            <tr><td>Other Charges</td><td class="text-end">KES 0.00</td></tr>
+            <tr>
+                <td class="text-end" style="color: red;">Discount:</td>
+                <td class="text-end" style="color: red;">- KES {{ invoice.discount|floatformat:2 }}</td>
+            </tr>
+            <tr class="total-row">
+                <td>TOTAL AMOUNT PAID:</td>
+                <td class="text-end">KES {{ invoice.total|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 15px;">
+        <p><strong>Payment Method Used:</strong> Cash / M-Pesa</p>
+        <p style="font-size: 12px; font-style: italic;">Served by: System Administrator</p>
+    </div>
+
+    <div class="footer-note">
+        <p>Thank you for choosing CareOs Medical Center.</p>
+        <p><em>Quick Recovery!</em></p>
+    </div>
+
+</body>
+</html>

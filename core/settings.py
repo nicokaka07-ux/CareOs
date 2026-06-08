@@ -1,6 +1,9 @@
 from pathlib import Path
 from decouple import config
+import dj_database_url
+import os
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='fallback-secret-key')
@@ -16,12 +19,21 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'crispy_bootstrap5',
+    
+    # Established Infrastructure Modules
     'accounts',
     'opd',
     'clinical',
     'pharmacy',
     'billing',
     'administration',
+    
+    # New Step-by-Step Specialized Clinical Departments
+    'laboratory',
+    # 💡 TEMPORARY NOTE: If you get a 'ModuleNotFoundError' while running startapp,
+    # put a '#' in front of 'optical' and 'dental' below until the folders are generated.
+    'optical',
+    'dental',
 ]
 
 MIDDLEWARE = [
@@ -141,10 +153,9 @@ LOGGING = {
     },
 }
 
-import dj_database_url
-import os
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 DEFAULT_FROM_EMAIL = 'CareOS HMS <noreply@careos.com>'
